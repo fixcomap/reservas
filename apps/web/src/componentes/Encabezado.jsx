@@ -1,7 +1,8 @@
 import { CLUB } from '../config.js';
 import { IconoPersona, IconoPin } from './Iconos.jsx';
 
-// Franja verde de arriba con la marca y el nombre del club.
+// Arriba la marca, debajo la foto de portada del club y, superpuesta
+// sobre el borde inferior de la foto, la tarjeta con nombre y dirección.
 export default function Encabezado() {
   return (
     <header className="encabezado">
@@ -20,11 +21,17 @@ export default function Encabezado() {
         </button>
       </div>
 
-      <h1 className="club-nombre">{CLUB.nombre}</h1>
-      <p className="club-direccion">
-        <IconoPin />
-        {CLUB.direccion}
-      </p>
+      <div className="encabezado-foto-wrap">
+        <img className="encabezado-foto" src="/club.jpg" alt="Cancha de pádel del club" />
+      </div>
+
+      <div className="encabezado-info">
+        <h1 className="club-nombre">{CLUB.nombre}</h1>
+        <p className="club-direccion">
+          <IconoPin />
+          {CLUB.direccion}
+        </p>
+      </div>
     </header>
   );
 }
