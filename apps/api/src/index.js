@@ -1,8 +1,12 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const pool = require('./db');
+const { buscarTurno, liberarVencidas } = require('./turnos');
+const rutasAdmin = require('./rutasAdmin');
 
 const app = express();
 app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
 const PORT = process.env.API_PORT || 3000;
 const CLUB_ID = Number(process.env.CLUB_ID || 1);
 
@@ -80,37 +84,6 @@ app.get('/disponibilidad', async (req, res) => {
   }
 });
 
-// Libera las reservas retenidas cuyo tiempo de pago ya venció
-async function liberarVencidas() {
-  await pool.query(`
-    UPDATE reservas SET estado = 'cancelada'
-    WHERE estado = 'retenida' AND vence_en < now()
-  `);
-}
-
-// Verifica que el turno exista según los horarios del club
-const SQL_VALIDAR_TURNO = `
-  SELECT s.inicio,
-         s.inicio + make_interval(mins => c.duracion_min) AS fin,
-         EXISTS (
-           SELECT 1 FROM turnos_fijos tf
-           WHERE tf.cancha_id = c.id AND tf.activo
-             AND tf.dia_semana = EXTRACT(DOW FROM $1::date)
-             AND tf.hora_inicio = (s.inicio AT TIME ZONE cl.zona_horaria)::time
-         ) AS es_fijo
-  FROM canchas c
-  JOIN clubes cl ON cl.id = c.club_id
-  JOIN horarios_apertura h
-    ON h.club_id = c.club_id AND h.dia_semana = EXTRACT(DOW FROM $1::date)
-  CROSS JOIN LATERAL generate_series(
-    ($1::date + h.abre) AT TIME ZONE cl.zona_horaria,
-    ($1::date + h.cierra) AT TIME ZONE cl.zona_horaria - make_interval(mins => c.duracion_min),
-    make_interval(mins => c.duracion_min)
-  ) AS s(inicio)
-  WHERE c.id = $2 AND c.club_id = $3 AND c.activa
-    AND to_char(s.inicio AT TIME ZONE cl.zona_horaria, 'HH24:MI') = $4;
-`;
-
 app.post('/reservas', async (req, res) => {
   const { cancha_id, fecha, hora, cliente_nombre, cliente_tel } = req.body || {};
 
@@ -137,15 +110,14 @@ app.post('/reservas', async (req, res) => {
     await liberarVencidas();
 
     // 2. Verificar que el turno exista y se pueda reservar
-    const { rows } = await pool.query(SQL_VALIDAR_TURNO, [fecha, cancha_id, CLUB_ID, hora]);
-    if (rows.length === 0) {
+    const turno = await buscarTurno(fecha, cancha_id, CLUB_ID, hora);
+    if (!turno) {
       return res.status(400).json({ error: 'Ese turno no existe' });
     }
-    const turno = rows[0];
     if (turno.inicio < new Date()) {
       return res.status(400).json({ error: 'Ese turno ya pasó' });
     }
-    if (turno.es_fijo) {
+    if (turno.esFijo) {
       return res.status(409).json({ error: 'Ese turno ya está tomado' });
     }
 
@@ -168,6 +140,8 @@ app.post('/reservas', async (req, res) => {
     res.status(500).json({ error: 'Error interno' });
   }
 });
+
+app.use('/admin', rutasAdmin);
 
 app.listen(PORT, () => {
   console.log(`API escuchando en http://localhost:${PORT}`);

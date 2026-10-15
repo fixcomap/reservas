@@ -1,0 +1,516 @@
+/* Estilos propios del panel del dueño. Reusa las variables, la tipografía
+   y los componentes de estilos.css (tarjeta, campo, boton, aviso-error,
+   filas/fila, letra-chica, barra-fija...) y solo agrega lo que el panel
+   necesita y la app del jugador no tiene: el header oscuro, la grilla de
+   turnos, la hoja inferior y la barra de pestañas. */
+
+:root {
+  /* Header oscuro del panel: no es el verde de marca, así que se
+     distingue de un vistazo de la app del jugador. */
+  --adm-oscuro: #122420;
+  --adm-gris-claro: #EDEFEE;
+  --adm-bloqueo: #3A4249;
+}
+
+/* ===========================================================
+   Pantalla de carga inicial (mientras se consulta /admin/yo)
+   =========================================================== */
+.adm-cargando-pantalla {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===========================================================
+   Login
+   =========================================================== */
+.adm-login-fondo {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.adm-login-tarjeta {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.adm-login-icono {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+}
+
+.adm-login-titulo {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.adm-login-bajada {
+  margin-top: 4px;
+  margin-bottom: 20px;
+}
+
+.adm-login-tarjeta form {
+  text-align: left;
+}
+
+/* ===========================================================
+   Cabecera oscura y tarjetas de resumen
+   =========================================================== */
+.adm-cabecera {
+  background: var(--adm-oscuro);
+  color: var(--blanco);
+  padding: 16px 16px 40px;
+  border-radius: 0 0 22px 22px;
+  /* La tarjeta blanca de navegación de día se monta sobre este borde */
+  margin-bottom: -26px;
+}
+
+.adm-cabecera-marca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.adm-cabecera-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-boton-icono {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: var(--blanco);
+  display: grid;
+  place-items: center;
+}
+
+.adm-boton-icono:disabled {
+  opacity: 0.5;
+}
+
+.adm-boton-icono:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.adm-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.adm-stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 10px 10px;
+  min-width: 0;
+}
+
+.adm-stat-valor {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.adm-stat-etiqueta {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===========================================================
+   Navegación de día (tarjeta blanca superpuesta a la cabecera)
+   =========================================================== */
+.adm-dia-nav {
+  position: relative;
+  z-index: 1;
+  background: var(--blanco);
+  margin: 0 16px 20px;
+  border-radius: 16px;
+  box-shadow: var(--sombra);
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.adm-dia-nav-texto {
+  text-align: center;
+}
+
+.adm-dia-titulo {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.adm-dia-subtitulo {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gris);
+  margin-top: 1px;
+}
+
+.adm-flecha {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--fondo);
+  color: var(--texto);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.adm-flecha:hover {
+  background: var(--borde);
+}
+
+/* ===========================================================
+   Grilla de turnos
+   =========================================================== */
+.adm-grilla {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adm-grilla-encabezado,
+.adm-grilla-fila {
+  display: grid;
+  grid-template-columns: 46px repeat(var(--adm-columnas, 2), 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.adm-grilla-cancha {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gris);
+  text-align: center;
+  padding-bottom: 2px;
+}
+
+.adm-grilla-hora {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gris);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 2px;
+}
+
+.adm-turno {
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  text-align: left;
+  font-family: inherit;
+}
+
+.adm-turno-titulo {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adm-turno-subtitulo {
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adm-turno--libre {
+  background: var(--blanco);
+  color: var(--gris);
+  border: 1.5px dashed #C7CFCB;
+}
+
+.adm-turno--online {
+  background: var(--verde-oscuro);
+  color: var(--blanco);
+  border-color: var(--verde-oscuro);
+}
+
+.adm-turno--fijo {
+  background: var(--azul);
+  color: var(--blanco);
+  border-color: var(--azul);
+}
+
+.adm-turno--manual {
+  background: var(--adm-gris-claro);
+  color: var(--texto);
+  border: 1.5px solid var(--borde);
+}
+
+.adm-turno--bloqueo {
+  background: var(--adm-bloqueo);
+  color: var(--blanco);
+  border-color: var(--adm-bloqueo);
+}
+
+.adm-turno--vacio {
+  min-height: 56px;
+}
+
+/* ===========================================================
+   Leyenda
+   =========================================================== */
+.adm-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 0 2px;
+}
+
+.adm-leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--gris);
+}
+
+.adm-leyenda-punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ===========================================================
+   Hoja inferior (bottom sheet) al tocar un turno
+   =========================================================== */
+.adm-hoja-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 17, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+
+.adm-hoja {
+  width: 100%;
+  max-width: var(--ancho-app);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--blanco);
+  border-radius: 22px 22px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(16, 36, 28, 0.18);
+}
+
+.adm-hoja-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.adm-hoja-hora {
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.adm-hoja-cancha {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris);
+  margin-top: 1px;
+}
+
+.adm-hoja-cerrar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--fondo);
+  color: var(--texto);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.adm-hoja-opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-boton-secundario {
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1.5px solid var(--borde);
+  background: var(--blanco);
+  color: var(--texto);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 26px;
+}
+
+.adm-boton-secundario:hover:not(:disabled) {
+  background: var(--fondo);
+}
+
+.boton-rojo {
+  background: var(--rojo);
+}
+
+.boton-rojo:hover:not(:disabled) {
+  background: #B93838;
+}
+
+.adm-hoja-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-boton-whatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 10px;
+  background: #E3F6EA;
+  color: var(--verde-oscuro);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 10px;
+}
+
+.adm-boton-whatsapp:hover {
+  background: #D3EFDE;
+}
+
+.adm-confirmar {
+  background: var(--fondo);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.adm-confirmar p {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.adm-confirmar-botones {
+  display: flex;
+  gap: 10px;
+}
+
+.adm-confirmar-botones button {
+  flex: 1;
+}
+
+/* ===========================================================
+   Turnos fijos (lista)
+   =========================================================== */
+.adm-lista-fijos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-fijo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.adm-fijo-item:last-child {
+  border-bottom: none;
+}
+
+.adm-fijo-titulo {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+/* ===========================================================
+   Barra de pestañas de abajo
+   =========================================================== */
+.adm-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--blanco);
+  border-top: 1px solid var(--borde);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mismo truco que .barra-fija-interior: la franja ocupa todo el ancho
+   de la pantalla, pero su contenido queda centrado y angosto. */
+.adm-tabs-interior {
+  max-width: var(--ancho-app);
+  margin: 0 auto;
+  display: flex;
+}
+
+.adm-tab {
+  flex: 1;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--gris);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.adm-tab.es-activa {
+  color: var(--verde);
+}
+
+.adm-tab:disabled {
+  opacity: 0.4;
+}

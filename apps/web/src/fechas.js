@@ -30,7 +30,10 @@ function partes(iso) {
   return new Date(Date.UTC(anio, mes - 1, dia));
 }
 
-function sumarDias(iso, cantidad) {
+// Suma (o resta, con cantidad negativa) días a una fecha AAAA-MM-DD.
+// La usa proximosSieteDias acá abajo, y también la agenda del panel
+// para las flechas de "día anterior / día siguiente".
+export function sumarDias(iso, cantidad) {
   const fecha = partes(iso);
   fecha.setUTCDate(fecha.getUTCDate() + cantidad);
   return fecha.toISOString().slice(0, 10);
@@ -73,6 +76,27 @@ export function sumarMinutos(hora, minutos) {
   const [h, m] = hora.split(':').map(Number);
   const total = (h * 60 + m + minutos) % (24 * 60);
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+// Día de la semana (0 = domingo, igual que EXTRACT(DOW) de Postgres)
+// de una fecha AAAA-MM-DD. La usa la agenda del panel para armar el
+// "todos los jue" de los turnos fijos.
+export function diaDeLaSemana(iso) {
+  return partes(iso).getUTCDay();
+}
+
+// "Hoy · jueves 15 oct" (o sin el "Hoy · " si no es hoy). Formato del
+// encabezado de la agenda del panel.
+export function tituloAgenda(iso) {
+  const fecha = partes(iso);
+  const dia = `${DIAS_LARGOS[fecha.getUTCDay()].toLowerCase()} ${fecha.getUTCDate()} ${MESES_CORTOS[fecha.getUTCMonth()].toLowerCase()}`;
+  return iso === hoyEnArgentina() ? `Hoy · ${dia}` : dia;
+}
+
+// "jue" a partir de un dia_semana de Postgres (0 = domingo). La usa el
+// panel para mostrar "Fijo · todos los jue" en los turnos fijos.
+export function nombreDiaCorto(diaSemana) {
+  return DIAS_CORTOS[diaSemana].toLowerCase();
 }
 
 // La API devuelve vence_en en UTC ("2026-10-15T21:59:43.177Z").

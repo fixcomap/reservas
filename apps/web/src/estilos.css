@@ -624,7 +624,8 @@ button:disabled {
   margin-bottom: 6px;
 }
 
-.campo input {
+.campo input,
+.campo select {
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
@@ -641,7 +642,8 @@ button:disabled {
   color: #9AA6AF;
 }
 
-.campo input:focus {
+.campo input:focus,
+.campo select:focus {
   outline: 2px solid var(--verde);
   outline-offset: 0;
   border-color: var(--verde);
