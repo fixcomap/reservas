@@ -1,0 +1,824 @@
+/* ===========================================================
+   Variables: los colores del diseño en un solo lugar.
+   =========================================================== */
+:root {
+  --verde: #0F6B52;
+  --verde-oscuro: #0A4F3C;
+  --verde-claro: #DDF3E6;
+  --texto: #18232F;
+  --gris: #55626F;
+  --fondo: #F4F6F5;
+  --borde: #E3E8E6;
+  --azul: #1273BC;
+  --azul-oscuro: #0F629F;
+  --rojo: #D64545;
+  --blanco: #FFFFFF;
+
+  --ancho-app: 480px;
+  --radio: 16px;
+  --sombra: 0 2px 10px rgba(16, 36, 28, 0.06);
+
+  /* Alto de la barra fija de abajo: se lo dejamos de padding al contenido
+     para que el último elemento no quede tapado. */
+  --alto-barra: 86px;
+
+  /* El diseño es claro. Sin esto, Chrome con modo oscuro automatico
+     invierte los colores y los inputs quedan grises. */
+  color-scheme: light;
+}
+
+/* ===========================================================
+   Base
+   =========================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p, dl, dd, dt, ul {
+  margin: 0;
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Foco visible para quien navega con el teclado */
+:focus-visible {
+  outline: 2px solid var(--verde);
+  outline-offset: 2px;
+}
+
+#root {
+  max-width: var(--ancho-app);
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--fondo);
+  position: relative;
+}
+
+.pantalla-scroll {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Deja lugar para la barra fija de abajo */
+.con-barra {
+  padding-bottom: var(--alto-barra);
+}
+
+.contenido {
+  padding: 0 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tarjeta {
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 16px;
+}
+
+.tarjeta-titulo {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.titulo-seccion {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===========================================================
+   Pantalla 1 - Encabezado verde
+   =========================================================== */
+.encabezado {
+  background: var(--verde);
+  color: var(--blanco);
+  padding: 18px 16px 46px;
+  border-radius: 0 0 22px 22px;
+  /* La tarjeta del selector de dia se monta encima del borde verde */
+  margin-bottom: -32px;
+}
+
+.encabezado-marca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.marca-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--blanco);
+  color: var(--verde);
+  font-weight: 800;
+  font-size: 19px;
+  display: grid;
+  place-items: center;
+}
+
+.marca-nombre {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.marca-bajada {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: -2px;
+}
+
+.boton-cuenta {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  color: var(--blanco);
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+}
+
+.club-nombre {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-top: 22px;
+}
+
+.club-direccion {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 5px;
+}
+
+/* ===========================================================
+   Pantalla 1 - Selector de dia
+   =========================================================== */
+.selector-dia {
+  position: relative;
+  padding: 14px;
+}
+
+.selector-dia-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.selector-dia-titulo h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.selector-dia-titulo span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gris);
+}
+
+.dias-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+
+.dias-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.dias-scroll::-webkit-scrollbar-track {
+  background: #EDF0EF;
+  border-radius: 999px;
+}
+
+.dias-scroll::-webkit-scrollbar-thumb {
+  background: #BFC8C4;
+  border-radius: 999px;
+}
+
+.dia-chip {
+  flex: 0 0 auto;
+  width: 58px;
+  min-height: 64px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--texto);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  scroll-snap-align: start;
+}
+
+.dia-chip.es-elegido {
+  background: var(--verde);
+  border-color: var(--verde);
+  color: var(--blanco);
+}
+
+.dia-etiqueta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--gris);
+}
+
+.dia-chip.es-elegido .dia-etiqueta,
+.dia-chip.es-elegido .dia-mes {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dia-numero {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.dia-mes {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--gris);
+}
+
+/* ===========================================================
+   Pantalla 1 - Horarios
+   =========================================================== */
+.horarios-grilla {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.hora-chip {
+  min-height: 44px;
+  padding: 11px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--texto);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hora-chip.es-elegido {
+  background: var(--texto);
+  border-color: var(--texto);
+  color: var(--blanco);
+}
+
+/* ===========================================================
+   Pantalla 1 - Canchas libres
+   =========================================================== */
+.lista-canchas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cancha-card {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--blanco);
+  border: 2px solid transparent;
+  box-shadow: var(--sombra);
+  color: var(--texto);
+}
+
+.cancha-card.es-elegido {
+  border-color: var(--verde);
+}
+
+.cancha-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cancha-nombre {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cancha-descripcion {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+}
+
+.cancha-precio {
+  flex: 0 0 auto;
+  background: var(--verde-claro);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.cancha-precio-monto {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--verde-oscuro);
+}
+
+.cancha-precio-duracion {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gris);
+}
+
+/* ===========================================================
+   Barras fijas de abajo (pantallas 1 y 2)
+   =========================================================== */
+.barra-fija {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--blanco);
+  border-top: 1px solid var(--borde);
+  box-shadow: 0 -2px 12px rgba(16, 36, 28, 0.05);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.barra-fija-interior {
+  max-width: var(--ancho-app);
+  margin: 0 auto;
+  padding: 12px 16px 14px;
+}
+
+.barra-continuar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.barra-resumen-linea {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+}
+
+.barra-resumen-cancha {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.barra-senia {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.barra-senia span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris);
+}
+
+.barra-senia strong {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* ===========================================================
+   Botones
+   =========================================================== */
+.boton {
+  min-height: 44px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 26px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blanco);
+}
+
+.boton-verde {
+  background: var(--verde);
+}
+
+.boton-verde:hover:not(:disabled) {
+  background: var(--verde-oscuro);
+}
+
+.boton-azul {
+  width: 100%;
+  background: var(--azul);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.boton-azul:hover:not(:disabled) {
+  background: var(--azul-oscuro);
+}
+
+.boton:disabled {
+  background: #C3CCC8;
+  color: var(--blanco);
+}
+
+.boton-ancho {
+  width: 100%;
+}
+
+/* ===========================================================
+   Pantalla 2 - Barra superior y formulario
+   =========================================================== */
+.barra-superior {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--blanco);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 18px;
+}
+
+.barra-superior-titulo {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.boton-volver {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #EFF2F1;
+  color: var(--texto);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.boton-volver:hover {
+  background: #E4E8E6;
+}
+
+.resumen-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 4px;
+}
+
+.resumen-icono {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--verde-claro);
+  color: var(--verde);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.resumen-fecha {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.resumen-horario {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris);
+  margin-top: 2px;
+}
+
+/* Filas "etiqueta a la izquierda, valor a la derecha" */
+.filas {
+  display: flex;
+  flex-direction: column;
+}
+
+.fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+}
+
+.fila dt {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gris);
+}
+
+.fila dd {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.campo {
+  margin-bottom: 14px;
+}
+
+.campo:last-child {
+  margin-bottom: 0;
+}
+
+.campo label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gris);
+  margin-bottom: 6px;
+}
+
+.campo input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #D9E0DD;
+  border-radius: 10px;
+  background: var(--blanco);
+  color: var(--texto);
+  /* 16px a proposito: con menos, el iPhone hace zoom al tocar el input */
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.campo input::placeholder {
+  color: #9AA6AF;
+}
+
+.campo input:focus {
+  outline: 2px solid var(--verde);
+  outline-offset: 0;
+  border-color: var(--verde);
+}
+
+.campo input[aria-invalid="true"] {
+  border-color: var(--rojo);
+}
+
+.campo-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rojo);
+  margin-top: 6px;
+}
+
+.letra-chica {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+  line-height: 1.5;
+}
+
+.aviso-error {
+  background: #FDECEC;
+  border: 1px solid #F6C9C9;
+  color: #9C2A2A;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ===========================================================
+   Pantalla 3 - Turno retenido
+   =========================================================== */
+.exito-cabecera {
+  background: var(--verde);
+  color: var(--blanco);
+  text-align: center;
+  padding: 44px 24px 60px;
+  /* La tarjeta de la reserva se monta sobre el verde */
+  margin-bottom: -40px;
+}
+
+.exito-circulo {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--verde);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+}
+
+.exito-titulo {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.exito-bajada {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.contenido-exito {
+  gap: 10px;
+  padding-bottom: 28px;
+}
+
+.reserva-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.reserva-numero {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--gris);
+}
+
+.pastilla {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reserva-fecha {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+
+.boton-accion {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--texto);
+  box-shadow: var(--sombra);
+}
+
+.boton-accion:disabled {
+  opacity: 0.45;
+}
+
+.boton-texto-rojo {
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--rojo);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px;
+}
+
+.boton-texto-rojo:disabled {
+  opacity: 0.45;
+}
+
+.pie {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+  margin-top: 18px;
+}
+
+.pie strong {
+  font-weight: 800;
+  color: var(--texto);
+}
+
+/* ===========================================================
+   Estados: cargando, error, sin turnos
+   =========================================================== */
+.estado {
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 28px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.estado-titulo {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.estado-texto {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris);
+}
+
+.estado .boton {
+  margin-top: 8px;
+}
+
+.estado-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--verde-claro);
+  border-top-color: var(--verde);
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .estado-spinner {
+    animation-duration: 2.4s;
+  }
+}
