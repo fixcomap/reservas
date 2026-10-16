@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CLUB, DURACION_MIN, SENIA_TEXTO } from '../config.js';
-import { formatearPrecio } from '../precios.js';
+import { DURACION_MIN } from '../config.js';
+import { formatearPrecio, formatearMonto } from '../precios.js';
 import { tituloLargo, sumarMinutos } from '../fechas.js';
 import { IconoCalendario, IconoFlechaAtras } from '../componentes/Iconos.jsx';
 
@@ -8,10 +8,11 @@ import { IconoCalendario, IconoFlechaAtras } from '../componentes/Iconos.jsx';
 // sin esperar el viaje de ida y vuelta.
 const TELEFONO_OK = /^\+?[\d\s-]{8,20}$/;
 
-// Pantalla 2: datos del jugador y confirmación.
-export default function ConfirmarReserva({ fecha, hora, cancha, enviando, error, onVolver, onReservar }) {
+// Pantalla 2: forma de pago, datos del jugador y confirmación.
+export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorcentaje, enviando, error, onVolver, onReservar }) {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [tipoPago, setTipoPago] = useState('senia');
   const [errores, setErrores] = useState({});
 
   function enviar(evento) {
@@ -23,11 +24,18 @@ export default function ConfirmarReserva({ fecha, hora, cancha, enviando, error,
     setErrores(nuevos);
 
     if (Object.keys(nuevos).length === 0) {
-      onReservar({ cliente_nombre: nombre.trim(), cliente_tel: telefono.trim() });
+      onReservar({ cliente_nombre: nombre.trim(), cliente_tel: telefono.trim(), tipo_pago: tipoPago });
     }
   }
 
-  const precio = formatearPrecio(cancha.precio);
+  // Esto es solo para mostrar algo antes de reservar: el monto que
+  // vale de verdad es el que devuelve la API al confirmar (ver
+  // TurnoConfirmado), calculado del lado del servidor con el precio y
+  // el porcentaje que estén guardados en ese momento.
+  const total = Number(cancha.precio) || 0;
+  const senia = Math.round((total * seniaPorcentaje) / 100);
+  const resto = total - senia;
+  const aPagarAhora = tipoPago === 'senia' ? senia : total;
 
   return (
     <>
@@ -44,104 +52,161 @@ export default function ConfirmarReserva({ fecha, hora, cancha, enviando, error,
               "Te guardamos el turno 10:00 min mientras pagás la seña".
               Hoy no se muestra porque el turno recién se retiene al reservar. */}
 
-          <section className="tarjeta">
-            <div className="resumen-cabecera">
-              <span className="resumen-icono" aria-hidden="true">
-                <IconoCalendario />
-              </span>
-              <div>
-                <p className="resumen-fecha">{tituloLargo(fecha)}</p>
-                <p className="resumen-horario">
-                  {hora} a {sumarMinutos(hora, DURACION_MIN)} · {DURACION_MIN} min
-                </p>
-              </div>
+          {/* .p2-layout/.p2-principal/.p2-lateral: en celular y tablet
+              son transparentes (display: contents, ver estilos.css),
+              así que las dos section.tarjeta quedan en el mismo orden
+              de siempre. Desde 1024px arman dos columnas. */}
+          <div className="p2-layout">
+            <div className="p2-principal">
+              <section className="tarjeta">
+                <div className="resumen-cabecera">
+                  <span className="resumen-icono" aria-hidden="true">
+                    <IconoCalendario />
+                  </span>
+                  <div>
+                    <p className="resumen-fecha">{tituloLargo(fecha)}</p>
+                    <p className="resumen-horario">
+                      {hora} a {sumarMinutos(hora, DURACION_MIN)} · {DURACION_MIN} min
+                    </p>
+                  </div>
+                </div>
+
+                <dl className="filas">
+                  <div className="fila">
+                    <dt>Club</dt>
+                    <dd>{club?.nombre}</dd>
+                  </div>
+                  <div className="fila">
+                    <dt>Cancha</dt>
+                    <dd>
+                      {cancha.nombre} · {cancha.descripcion}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="pago-opciones" role="radiogroup" aria-label="Forma de pago">
+                  <label className={`pago-opcion${tipoPago === 'senia' ? ' es-elegido' : ''}`}>
+                    <input
+                      type="radio"
+                      name="tipo-pago"
+                      value="senia"
+                      checked={tipoPago === 'senia'}
+                      onChange={() => setTipoPago('senia')}
+                    />
+                    <span className="pago-opcion-texto">
+                      <span className="pago-opcion-titulo">Seña · {formatearPrecio(senia)}</span>
+                      <span className="pago-opcion-sub">Pagás {formatearMonto(resto)} en el club</span>
+                    </span>
+                  </label>
+                  <label className={`pago-opcion${tipoPago === 'total' ? ' es-elegido' : ''}`}>
+                    <input
+                      type="radio"
+                      name="tipo-pago"
+                      value="total"
+                      checked={tipoPago === 'total'}
+                      onChange={() => setTipoPago('total')}
+                    />
+                    <span className="pago-opcion-texto">
+                      <span className="pago-opcion-titulo">Pago total · {formatearPrecio(total)}</span>
+                      <span className="pago-opcion-sub">No pagás nada en el club</span>
+                    </span>
+                  </label>
+                </div>
+
+                <dl className="filas">
+                  <div className="fila">
+                    <dt>Total del turno</dt>
+                    <dd>{formatearPrecio(total)}</dd>
+                  </div>
+                  <div className="fila">
+                    <dt>{tipoPago === 'senia' ? 'Seña' : 'A pagar ahora'}</dt>
+                    <dd>{formatearPrecio(aPagarAhora)}</dd>
+                  </div>
+                  <div className="fila">
+                    <dt>Resto a pagar en el club</dt>
+                    <dd>{formatearMonto(total - aPagarAhora)}</dd>
+                  </div>
+                </dl>
+              </section>
             </div>
 
-            <dl className="filas">
-              <div className="fila">
-                <dt>Club</dt>
-                <dd>{CLUB.nombre}</dd>
-              </div>
-              <div className="fila">
-                <dt>Cancha</dt>
-                <dd>
-                  {cancha.nombre} · {cancha.descripcion}
-                </dd>
-              </div>
-              <div className="fila">
-                <dt>Total del turno</dt>
-                <dd>{precio}</dd>
-              </div>
-              <div className="fila">
-                <dt>Resto a pagar en el club</dt>
-                <dd>{precio}</dd>
-              </div>
-            </dl>
-          </section>
+            <div className="p2-lateral">
+              <section className="tarjeta">
+                <h2 className="tarjeta-titulo">Tus datos</h2>
+                <form id="form-datos" onSubmit={enviar} noValidate>
+                  <div className="campo">
+                    <label htmlFor="nombre">Nombre y apellido</label>
+                    <input
+                      id="nombre"
+                      name="nombre"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Ej: Juan Pérez"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      aria-invalid={Boolean(errores.nombre)}
+                      aria-describedby={errores.nombre ? 'error-nombre' : undefined}
+                    />
+                    {errores.nombre && (
+                      <p className="campo-error" id="error-nombre">
+                        {errores.nombre}
+                      </p>
+                    )}
+                  </div>
 
-          <section className="tarjeta">
-            <h2 className="tarjeta-titulo">Tus datos</h2>
-            <form id="form-datos" onSubmit={enviar} noValidate>
-              <div className="campo">
-                <label htmlFor="nombre">Nombre y apellido</label>
-                <input
-                  id="nombre"
-                  name="nombre"
-                  type="text"
-                  autoComplete="name"
-                  placeholder="Ej: Juan Pérez"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  aria-invalid={Boolean(errores.nombre)}
-                  aria-describedby={errores.nombre ? 'error-nombre' : undefined}
-                />
-                {errores.nombre && (
-                  <p className="campo-error" id="error-nombre">
-                    {errores.nombre}
-                  </p>
-                )}
-              </div>
+                  <div className="campo">
+                    <label htmlFor="telefono">WhatsApp</label>
+                    <input
+                      id="telefono"
+                      name="telefono"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="11 1234 5678"
+                      value={telefono}
+                      onChange={(e) => setTelefono(e.target.value)}
+                      aria-invalid={Boolean(errores.telefono)}
+                      aria-describedby={errores.telefono ? 'error-telefono' : undefined}
+                    />
+                    {errores.telefono && (
+                      <p className="campo-error" id="error-telefono">
+                        {errores.telefono}
+                      </p>
+                    )}
+                  </div>
+                </form>
+              </section>
 
-              <div className="campo">
-                <label htmlFor="telefono">WhatsApp</label>
-                <input
-                  id="telefono"
-                  name="telefono"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder="11 1234 5678"
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                  aria-invalid={Boolean(errores.telefono)}
-                  aria-describedby={errores.telefono ? 'error-telefono' : undefined}
-                />
-                {errores.telefono && (
-                  <p className="campo-error" id="error-telefono">
-                    {errores.telefono}
-                  </p>
-                )}
-              </div>
-            </form>
-          </section>
+              {error && (
+                <p className="aviso-error" role="alert">
+                  {error}
+                </p>
+              )}
 
-          {error && (
-            <p className="aviso-error" role="alert">
-              {error}
-            </p>
-          )}
+              <p className="letra-chica">
+                Cancelando con más de [X] horas de anticipación te devolvemos la seña.
+              </p>
 
-          <p className="letra-chica">
-            Cancelando con más de [X] horas de anticipación te devolvemos la seña.
-          </p>
+              {/* Mismo form, mismo envío: en celular y tablet este botón
+                  no se ve (la barra fija de abajo hace lo mismo). */}
+              <button
+                type="submit"
+                form="form-datos"
+                className="boton boton-azul p2-boton-escritorio"
+                disabled={enviando}
+              >
+                {enviando ? 'Reservando…' : 'Reservar turno'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="barra-fija">
         <div className="barra-fija-interior">
           <div className="barra-senia">
-            <span>Seña a pagar ahora</span>
-            <strong>{SENIA_TEXTO}</strong>
+            <span>{tipoPago === 'senia' ? 'Seña a pagar ahora' : 'Total a pagar ahora'}</span>
+            <strong>{formatearPrecio(aPagarAhora)}</strong>
           </div>
           {/* Más adelante este botón abre el checkout de Mercado Pago.
               Por ahora hace el POST y retiene el turno 10 minutos. */}

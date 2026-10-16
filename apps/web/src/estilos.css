@@ -163,7 +163,7 @@ button:disabled {
   border-radius: 22px 22px 0 0;
   /* Se superpone sobre el borde inferior de la foto */
   margin-top: -22px;
-  padding: 18px 16px 46px;
+  padding: 18px 16px 55px;
   box-shadow: 0 -4px 10px rgba(16, 36, 28, 0.04);
 }
 
@@ -225,6 +225,242 @@ button:disabled {
   font-weight: 500;
   color: var(--gris);
   margin-top: 5px;
+}
+
+/* Nuevo: solo se ve desde escritorio (ver RESPONSIVE más abajo). En
+   celular la sección del mapa está a un scroll de distancia nomás. */
+.club-link-mapa {
+  display: none;
+}
+
+/* ===========================================================
+   Pantalla 1 - Pestañas "Reservas" / "Detalles del club" (celular y
+   tablet, menos de 1024px; ver RESPONSIVE más abajo para cuando se
+   ocultan). Todo nuevo, ninguna clase existía antes de esta tarea.
+   =========================================================== */
+.tabs-club {
+  bottom:9px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  padding: 0 16px;
+  margin-bottom: 4px;
+  /* Sombra suave en vez de una línea, para separar las pestañas del
+     contenido de abajo. */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0);
+}
+
+.tab-club {
+  /* Content-sized (no flex:1): ver el comentario en .tabs-club. */
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  color: var(--texto);
+  transition: color 150ms;
+}
+
+
+.tab-club-texto {
+  position: relative;
+  display: inline-block;
+  font-size: 17px;
+  font-weight: 600;
+  padding-bottom: 9px;
+}
+
+.tab-club-texto::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background-color 150ms;
+}
+
+.tab-club.es-activa {
+  color: var(--verde-oscuro);
+}
+
+.tab-club.es-activa .tab-club-texto::after {
+  background: var(--verde-oscuro);
+}
+
+
+.panel-reservas {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Utilidad: oculta la pestaña inactiva en celular/tablet. Desde
+   1024px no tiene efecto (ver RESPONSIVE), así que ahí las dos
+   secciones se ven siempre. */
+.oculta-movil {
+  display: none;
+}
+
+/* Cuando la pestaña activa es "Detalles", .contenido solo tiene
+   adentro el panel de Reservas oculto: sin esto le quedaría el
+   padding puesto sobre nada, un hueco vacío entre las pestañas y
+   "Detalles del club". */
+.contenido-vacio {
+  padding: 0;
+}
+
+/* ===========================================================
+   Pantalla 1 - "Dónde estamos" y pie de página (debajo del sistema
+   de reservas en escritorio; dentro de la pestaña "Detalles del
+   club" en celular/tablet). Todo nuevo: no reemplaza nada que ya
+   existiera, así que no hace falta el truco de "display: contents"
+   de .p1-layout.
+   =========================================================== */
+.info-club {
+  background: var(--blanco);
+  padding: 28px 16px;
+  border-top: 1px solid var(--borde);
+}
+
+.info-club-titulo {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.info-club-grilla {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-club-mapa-wrap {
+  width: 100%;
+  height: 220px;
+  border-radius: var(--radio);
+  overflow: hidden;
+  background: var(--fondo);
+}
+
+.info-club-mapa {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.info-club-tarjetas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-tarjeta {
+  background: var(--fondo);
+  border-radius: var(--radio);
+  padding: 14px 16px;
+}
+
+.info-tarjeta-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--texto);
+}
+
+.info-tarjeta-texto {
+  font-size: 13px;
+  color: var(--gris);
+  line-height: 1.5;
+}
+
+.info-horarios-lista,
+.info-servicios-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--gris);
+}
+
+.info-servicios-lista li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-servicios-lista svg {
+  color: var(--verde);
+  flex: 0 0 auto;
+}
+
+.info-club-contacto {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.boton-contacto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.boton-contacto-whatsapp {
+  background: #25D366;
+  color: var(--blanco);
+}
+
+.boton-contacto-instagram {
+  background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
+  color: var(--blanco);
+}
+
+.club-footer {
+  background: var(--verde-oscuro);
+  color: rgba(255, 255, 255, 0.88);
+  padding: 24px 16px 28px;
+  text-align: center;
+}
+
+.club-footer-nombre {
+  color: var(--blanco);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.club-footer-linea {
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+.club-footer-linea a {
+  color: var(--blanco);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.club-footer-fixcomap {
+  font-size: 11px;
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* ===========================================================
@@ -415,6 +651,62 @@ button:disabled {
 .cancha-precio-duracion {
   font-size: 10px;
   font-weight: 600;
+  color: var(--gris);
+}
+
+/* ===========================================================
+   Elección de forma de pago (seña / total) en la pantalla 2
+   =========================================================== */
+.pago-opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 4px;
+}
+
+.pago-opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--borde);
+  cursor: pointer;
+}
+
+.pago-opcion.es-elegido {
+  border-color: var(--verde);
+  background: var(--verde-claro);
+}
+
+/* El radio nativo se ve (no lo escondemos): así el foco de teclado y
+   el estado "marcado" quedan con la semántica de siempre, sin tener
+   que reconstruirla a mano con CSS. */
+.pago-opcion input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--verde);
+}
+
+.pago-opcion-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pago-opcion-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--texto);
+}
+
+.pago-opcion-sub {
+  font-size: 12px;
+  font-weight: 500;
   color: var(--gris);
 }
 
@@ -846,5 +1138,231 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .estado-spinner {
     animation-duration: 2.4s;
+  }
+}
+
+/* ===========================================================================
+   RESPONSIVE — tablet (768px+) y escritorio (1024px+)
+   ===========================================================================
+   Todo lo de arriba es la versión de celular y no se toca. De acá para
+   abajo solo hay reglas nuevas: clases que no existían, o reglas para
+   clases que ya existen pero escritas DENTRO de un @media. Por debajo de
+   768px ningún @media de este bloque puede estar activo, así que el
+   celular queda pixel a pixel igual que antes.
+
+   Las clases .p1-layout, .p1-principal, .p2-layout, .p2-principal y
+   .p2-lateral son contenedores nuevos que agrupan, en escritorio, algo
+   que hoy ya son hermanos sueltos dentro de .contenido. Su base (sin
+   media query) es "display: contents": no generan caja propia, así que
+   sus hijos quedan como si fueran hijos directos de .contenido, en el
+   mismo orden de siempre — exactamente la estructura de hoy. Recién
+   adentro del @media (min-width: 1024px) se convierten en una caja de
+   verdad (flex o grid) para armar las dos columnas.
+   .p1-lateral y .p2-boton-escritorio son contenido nuevo (la tarjeta
+   "Tu reserva" y un botón de reservar duplicado): en celular siguen
+   cumpliendo esa función la barra fija de siempre, así que arrancan en
+   "display: none".
+   =========================================================================== */
+
+.p1-layout,
+.p1-principal,
+.p2-layout,
+.p2-principal,
+.p2-lateral {
+  display: contents;
+}
+
+.p1-lateral,
+.p2-boton-escritorio {
+  display: none;
+}
+
+/* -----------------------------------------------------------
+   Tablet: 768px a 1023px — una sola columna, pero más ancha y
+   con más aire.
+   ----------------------------------------------------------- */
+@media (min-width: 768px) {
+  #root {
+    max-width: 640px;
+  }
+
+  .contenido {
+    padding: 0 24px 32px;
+    gap: 22px;
+  }
+
+  /* Misma idea que en la base: si la pestaña activa es "Detalles",
+     este padding no tiene que colapsar a 0px (acá .contenido-vacio
+     sí tiene contenido real al lado: InfoClub, debajo). */
+  .contenido-vacio {
+    padding: 0 24px 32px;
+  }
+
+  .tabs-club {
+    padding: 0 24px;
+  }
+
+  .horarios-grilla {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* -----------------------------------------------------------
+   Escritorio: 1024px en adelante
+   ----------------------------------------------------------- */
+@media (min-width: 1024px) {
+  #root {
+    max-width: 1200px;
+  }
+
+  /* La barra fija de abajo (pantallas 1 y 2) la reemplazan la tarjeta
+     lateral "Tu reserva" y el botón de reservar de la columna derecha. */
+  .barra-fija {
+    display: none;
+  }
+
+  .con-barra {
+    padding-bottom: 0;
+  }
+
+  /* --- Pantalla 1: foto más alta y grilla con más columnas --- */
+  .encabezado-foto-wrap {
+    height: 400px;
+    /* El fondo de .encabezado-info sigue tapando el borde inferior con
+       su propio margen negativo, así que acá solo redondeamos arriba. */
+    border-radius: 20px 20px 0 0;
+  }
+
+  .club-nombre {
+    font-size: 30px;
+  }
+
+  .club-link-mapa {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--verde);
+  }
+
+  .club-link-mapa:hover {
+    text-decoration: underline;
+  }
+
+  /* Sin pestañas en escritorio: Reservas y Detalles del club se ven
+     siempre, una debajo de la otra (ver más abajo). */
+  .tabs-club {
+    display: none;
+  }
+
+  .oculta-movil {
+    display: block;
+  }
+
+  .horarios-grilla {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  /* --- Pantalla 1: dos columnas --- */
+  .p1-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .p1-principal {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .p1-lateral {
+    display: block;
+    position: sticky;
+    top: 24px;
+  }
+
+  .p1-resumen .boton {
+    margin-top: 14px;
+  }
+
+  /* --- Pantalla 2: dos columnas --- */
+  .p2-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .p2-principal,
+  .p2-lateral {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .p2-lateral {
+    position: sticky;
+    top: 24px;
+  }
+
+  .p2-boton-escritorio {
+    display: block;
+  }
+
+  /* --- Pantalla 3: tarjeta centrada --- */
+  .exito-cabecera,
+  .contenido-exito {
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .exito-cabecera {
+    border-radius: 0 0 24px 24px;
+  }
+
+  /* --- "Dónde estamos" y pie de página: dos columnas --- */
+  .info-club {
+    padding: 48px 32px;
+  }
+
+  .info-club-titulo {
+    font-size: 22px;
+    margin-bottom: 22px;
+  }
+
+  .info-club-grilla {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 32px;
+  }
+
+  .info-club-mapa-wrap {
+    flex: 1 1 55%;
+    height: 100%;
+    min-height: 360px;
+  }
+
+  .info-club-tarjetas {
+    flex: 1 1 45%;
+    gap: 16px;
+  }
+
+  .info-club-contacto {
+    flex-direction: row;
+    margin-top: 28px;
+  }
+
+  .boton-contacto {
+    flex: 0 1 auto;
+    padding: 0 28px;
+  }
+
+  .club-footer {
+    padding: 28px 32px 32px;
   }
 }

@@ -1,9 +1,12 @@
-import { CLUB } from '../config.js';
 import { IconoPersona, IconoPin } from './Iconos.jsx';
 
 // Arriba la marca, debajo la foto de portada del club y, superpuesta
 // sobre el borde inferior de la foto, la tarjeta con nombre y dirección.
-export default function Encabezado() {
+// `club` llega de GET /club (App.jsx): mientras no cargó, se muestra
+// la tarjeta vacía nomás, no se inventa un nombre de relleno.
+export default function Encabezado({ club }) {
+  const direccion = [club?.direccion, club?.localidad].filter(Boolean).join(', ');
+
   return (
     <header className="encabezado">
       <div className="encabezado-marca">
@@ -26,11 +29,20 @@ export default function Encabezado() {
       </div>
 
       <div className="encabezado-info">
-        <h1 className="club-nombre">{CLUB.nombre}</h1>
-        <p className="club-direccion">
-          <IconoPin />
-          {CLUB.direccion}
-        </p>
+        <h1 className="club-nombre">{club?.nombre}</h1>
+        {direccion && (
+          <p className="club-direccion">
+            <IconoPin />
+            {direccion}
+          </p>
+        )}
+        {/* Nueva en escritorio: en celular/tablet no se muestra (el
+            mapa queda a un scroll de distancia nomás). */}
+        {club?.mapa_consulta && (
+          <a className="club-link-mapa" href="#panel-detalles">
+            Ver en mapa
+          </a>
+        )}
       </div>
     </header>
   );

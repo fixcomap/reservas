@@ -10,3 +10,14 @@ export function linkWhatsApp(telCrudo) {
   const conCodigo = digitos.startsWith('54') ? digitos : `54${digitos}`;
   return `https://wa.me/${conCodigo}`;
 }
+
+// Formato de pesos para montos reales del panel (total de una reserva,
+// lo pagado hasta ahora...). A diferencia de src/precios.js (la del
+// jugador), acá el 0 es un valor real — "pagado: $0" porque todavía no
+// se integró Mercado Pago — y no "todavía no hay precio cargado", así
+// que nunca lo cambiamos por un texto como "Consultar".
+export function formatearPesos(monto) {
+  const numero = Number(monto);
+  if (!Number.isFinite(numero)) return '—';
+  return '$' + numero.toLocaleString('es-AR');
+}

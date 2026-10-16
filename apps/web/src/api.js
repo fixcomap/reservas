@@ -34,6 +34,10 @@ export function getDisponibilidad(fecha) {
   return pedir(`/disponibilidad?fecha=${encodeURIComponent(fecha)}`);
 }
 
+export function getClub() {
+  return pedir('/club');
+}
+
 export function crearReserva(datos) {
   return pedir('/reservas', {
     method: 'POST',

@@ -285,6 +285,12 @@
   min-height: 56px;
 }
 
+/* Turno que ya empezó: se ve, pero atenuado. Si además es un libre
+   pasado, ni siquiera es un <button> (ver Agenda.jsx). */
+.adm-turno--pasado {
+  opacity: 0.5;
+}
+
 /* ===========================================================
    Leyenda
    =========================================================== */
@@ -454,7 +460,7 @@
 
 .adm-fijo-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   padding: 10px 0;
@@ -463,6 +469,29 @@
 
 .adm-fijo-item:last-child {
   border-bottom: none;
+}
+
+/* Lista de reservas que chocan con un turno fijo nuevo */
+.adm-lista-conflictos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -6px 0 2px;
+  padding: 10px 12px;
+  background: var(--fondo);
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--texto);
+  list-style: none;
+}
+
+/* Aviso dentro de la hoja de turno cuando la fecha tocada está
+   liberada por una excepción de un fijo */
+.adm-nota-liberado {
+  background: var(--fondo);
+  border-radius: 10px;
+  padding: 10px 12px;
 }
 
 .adm-fijo-titulo {
@@ -513,4 +542,464 @@
 
 .adm-tab:disabled {
   opacity: 0.4;
+}
+
+/* ===========================================================
+   Ajustes
+   =========================================================== */
+.aviso-exito {
+  background: var(--verde-claro);
+  border: 1px solid #BFE6D1;
+  color: var(--verde-oscuro);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.adm-ejemplo-senia {
+  margin-top: 6px;
+}
+
+/* El botón de cerrar sesión de Ajustes queda separado del formulario,
+   no como otra acción más del guardado. */
+.contenido > .adm-boton-secundario {
+  margin-top: 8px;
+}
+
+/* Checkboxes de servicios (sección "Datos del club" de Ajustes): una
+   lista fija, nunca texto libre. */
+.adm-servicios-grilla {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.adm-servicio-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.adm-servicio-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* ===========================================================================
+   RESPONSIVE — tablet (768px+) y escritorio (1024px+)
+   ===========================================================================
+   Mismo criterio que estilos.css: todo lo de arriba es la versión de
+   celular, sin tocar. Acá abajo solo hay clases nuevas, o reglas para
+   clases existentes escritas DENTRO de un @media.
+
+   .adm-shell / .adm-main / .adm-agenda-cabecera / .adm-grilla-scroll
+   son contenedores nuevos que en celular no generan caja propia
+   (display: contents): sus hijos quedan como si fueran hijos directos
+   de donde ya estaban, en el mismo orden de siempre. .adm-sidebar y
+   .adm-turno-extra son contenido nuevo que en celular no se muestra
+   (display: none), porque esa función la siguen cumpliendo la barra de
+   pestañas de abajo y el subtítulo del turno, como hasta ahora.
+   =========================================================================== */
+
+:root {
+  --adm-sidebar-ancho: 252px;
+}
+
+.adm-shell,
+.adm-main,
+.adm-agenda-cabecera,
+.adm-grilla-scroll {
+  display: contents;
+}
+
+.adm-sidebar,
+.adm-turno-extra,
+.adm-boton-hoy,
+.adm-linea-ahora {
+  display: none;
+}
+
+.adm-ancho {
+  display: contents;
+}
+
+/* -----------------------------------------------------------
+   Tablet: 768px a 1023px — misma estructura que en celular, pero la
+   agenda (y el resto) aprovechan el #root más ancho de estilos.css.
+   ----------------------------------------------------------- */
+@media (min-width: 768px) {
+  .adm-login-tarjeta {
+    max-width: 420px;
+  }
+}
+
+/* -----------------------------------------------------------
+   Escritorio: 1024px en adelante
+   ----------------------------------------------------------- */
+@media (min-width: 1024px) {
+  /* La barra de pestañas de abajo la reemplaza la barra lateral. */
+  .adm-tabs {
+    display: none;
+  }
+
+  .con-barra {
+    padding-bottom: 0;
+  }
+
+  /* --- Estructura general: sidebar fija + contenido --- */
+  .adm-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--adm-sidebar-ancho);
+    background: var(--adm-oscuro);
+    color: var(--blanco);
+    padding: 22px 16px;
+    z-index: 30;
+    overflow-y: auto;
+  }
+
+  .adm-main {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: var(--adm-sidebar-ancho);
+    overflow-y: auto;
+  }
+
+  .adm-sidebar-marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 18px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .adm-sidebar-nombre {
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .adm-sidebar-bajada {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 1px;
+  }
+
+  .adm-sidebar-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .adm-sidebar-tab {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .adm-sidebar-tab:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .adm-sidebar-tab.es-activa {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--blanco);
+  }
+
+  .adm-sidebar-tab:disabled {
+    opacity: 0.4;
+  }
+
+  .adm-sidebar-salir {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: var(--blanco);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .adm-sidebar-salir:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* --- Agenda y grilla comparten un mismo ancho máximo, centrado
+     dentro de .adm-main (que ocupa todo el espacio a la derecha de la
+     barra lateral, que sigue fija). En pantallas muy anchas evita que
+     la cabecera y la grilla queden separadas por un hueco enorme; en
+     pantallas angostas de escritorio evita que la cabecera se corte. */
+  .adm-ancho {
+    display: block;
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* --- Agenda: una sola cabecera oscura, con la fecha + flechas a la
+     izquierda y las tarjetas de resumen a la derecha. flex-wrap: si no
+     entran los dos en una fila, las tarjetas pasan a una fila propia
+     en vez de cortarse o salirse de la pantalla. */
+  .adm-agenda-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    /* Mismo inset horizontal que el padding de .contenido (24px), para
+       que el borde de la cabecera quede alineado con el de la grilla
+       de abajo en vez de sobresalirle. */
+    margin: 0 24px 20px;
+    background: var(--adm-oscuro);
+    color: var(--blanco);
+    border-radius: 18px;
+    padding: 18px 24px;
+  }
+
+  /* Ya no es ella la que pinta el fondo oscuro (lo pinta
+     .adm-agenda-cabecera, para poder repartir el espacio con
+     .adm-dia-nav): acá queda solo como contenedor de las tarjetas.
+     .adm-cabecera (no .adm-stats, que es nieta de .adm-agenda-cabecera
+     y no un ítem flex suyo) es quien tiene que poder achicarse: con
+     flex-basis 440px y min-width:0 se achica antes de desbordar, y si
+     ni así entra al lado de .adm-dia-nav, flex-wrap la manda a una
+     fila propia (ver .adm-agenda-cabecera). */
+  .adm-cabecera {
+    flex: 0 1 440px;
+    min-width: 0;
+    margin-bottom: 0;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  /* El nombre del club y el botón de cerrar sesión ya están en la
+     barra lateral: no hace falta repetirlos acá. */
+  .adm-cabecera-marca {
+    display: none;
+  }
+
+  .adm-stats {
+    margin-top: 0;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .adm-stat {
+    padding: 12px 14px;
+  }
+
+  /* "order" la manda primera dentro de .adm-agenda-cabecera, aunque en
+     el HTML sigue después de .adm-cabecera (así en celular, donde esta
+     regla no existe, el orden visual de siempre no cambia). Ya no es
+     una tarjeta blanca flotante: pasa a vivir adentro de la cabecera
+     oscura, así que se le saca el fondo/sombra/radio y se recolorean
+     sus textos e íconos para que se lean sobre el verde oscuro. */
+  .adm-dia-nav {
+    order: -1;
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    gap: 14px;
+  }
+
+  .adm-dia-titulo {
+    color: var(--blanco);
+  }
+
+  .adm-dia-subtitulo {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .adm-flecha {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--blanco);
+  }
+
+  .adm-flecha:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .adm-boton-hoy {
+    display: block;
+    min-height: 36px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    background: transparent;
+    color: var(--blanco);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .adm-boton-hoy:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* --- Grilla de turnos: ancho disponible + encabezado y columna de
+     horas fijos al hacer scroll --- */
+  .adm-grilla-scroll {
+    display: block;
+    max-height: calc(100vh - 280px);
+    overflow: auto;
+    border-radius: 14px;
+  }
+
+  .adm-grilla {
+    position: relative;
+  }
+
+  .adm-grilla-encabezado,
+  .adm-grilla-fila {
+    /* Entre 220 y 360px por cancha: ni se aprietan con pocas canchas
+       ni quedan vacías estirándose a lo ancho. */
+    grid-template-columns: 64px repeat(var(--adm-columnas, 2), minmax(220px, 360px));
+    /* Sin esto, una fila-grid con "width: auto" se achica para entrar
+       en el contenedor y las columnas quedan por debajo del mínimo en
+       vez de activar el scroll horizontal. Con "max-content" la fila
+       mide lo que necesitan sus columnas (64px + hasta 360px por
+       cancha) y es .adm-grilla-scroll el que decide si entra entero o
+       scrollea. "justify-content: start" evita que, si sobra ancho
+       (pocas canchas), el navegador reparta ese sobrante estirando las
+       columnas más allá de los 360px: la grilla queda pegada a la
+       izquierda y el resto del ancho se deja vacío, como pidieron. */
+    width: max-content;
+    min-width: 100%;
+    justify-content: start;
+  }
+
+  .adm-grilla-encabezado {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--fondo);
+    padding-bottom: 4px;
+  }
+
+  .adm-grilla-encabezado > div:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--fondo);
+  }
+
+  .adm-grilla-hora {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--fondo);
+    padding: 0 6px 0 2px;
+  }
+
+  .adm-turno {
+    min-height: 72px;
+    align-items: flex-start;
+  }
+
+  .adm-turno-titulo,
+  .adm-turno-subtitulo {
+    white-space: normal;
+  }
+
+  .adm-turno-extra {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+
+  /* Línea de "hora actual": una línea fina que cruza la grilla a la
+     altura de ahora mismo, solo cuando se está viendo el día de hoy
+     (Agenda.jsx calcula "top" midiendo las filas reales). Arranca
+     después de la columna de horas (64px) para no tapar la etiqueta. */
+  .adm-linea-ahora {
+    display: block;
+    position: absolute;
+    left: 64px;
+    right: 0;
+    height: 0;
+    border-top: 2px solid var(--rojo);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .adm-linea-ahora-etiqueta {
+    position: absolute;
+    left: 0;
+    top: -8px;
+    transform: translateY(-50%);
+    background: var(--rojo);
+    color: var(--blanco);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+  }
+
+  /* --- Hoja de turno: panel lateral derecho en vez de hoja inferior --- */
+  .adm-hoja-fondo {
+    align-items: stretch;
+    justify-content: flex-end;
+  }
+
+  .adm-hoja {
+    max-width: 420px;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    box-shadow: -8px 0 24px rgba(16, 36, 28, 0.18);
+  }
+
+  /* --- Turnos fijos y Ajustes: contenido más angosto y formularios
+     más cómodos --- */
+  .contenido-angosto {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
+  .contenido-angosto .campo {
+    margin-bottom: 18px;
+  }
+
+  .contenido-angosto .campo input,
+  .contenido-angosto .campo select {
+    min-height: 52px;
+  }
 }

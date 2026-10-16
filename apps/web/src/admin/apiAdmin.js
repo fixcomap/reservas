@@ -29,7 +29,12 @@ async function pedir(ruta, opciones) {
 
   if (!respuesta.ok) {
     if (respuesta.status === 401 && alPerderSesion) alPerderSesion();
-    throw new ErrorApi(cuerpo?.error || 'Algo salió mal. Intentá de nuevo.', respuesta.status);
+    const error = new ErrorApi(cuerpo?.error || 'Algo salió mal. Intentá de nuevo.', respuesta.status);
+    // Algunos 409 (choque de un turno fijo con reservas existentes)
+    // mandan datos extra, como la lista de conflictos. Quedan acá para
+    // que la pantalla los use si los necesita.
+    error.detalle = cuerpo;
+    throw error;
   }
   return cuerpo;
 }
@@ -76,4 +81,32 @@ export function crearTurnoFijo(datos) {
 
 export function desactivarTurnoFijo(id) {
   return pedir(`/turnos-fijos/${id}/desactivar`, { method: 'POST' });
+}
+
+export function crearExcepcion(turnoFijoId, datos) {
+  return pedir(`/turnos-fijos/${turnoFijoId}/excepciones`, { method: 'POST', body: JSON.stringify(datos) });
+}
+
+export function deshacerExcepcion(turnoFijoId, fecha) {
+  return pedir(`/turnos-fijos/${turnoFijoId}/excepciones/${fecha}/deshacer`, { method: 'POST' });
+}
+
+export function getAjustes() {
+  return pedir('/ajustes');
+}
+
+export function guardarPrecios(precios) {
+  return pedir('/ajustes/precios', { method: 'PUT', body: JSON.stringify(precios) });
+}
+
+export function guardarSenia(senia_porcentaje) {
+  return pedir('/ajustes/senia', { method: 'PUT', body: JSON.stringify({ senia_porcentaje }) });
+}
+
+export function getClubInfo() {
+  return pedir('/club-info');
+}
+
+export function guardarClubInfo(datos) {
+  return pedir('/club-info', { method: 'PUT', body: JSON.stringify(datos) });
 }

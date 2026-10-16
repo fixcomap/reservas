@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import Login from './pantallas/Login.jsx';
 import Agenda from './pantallas/Agenda.jsx';
 import TurnosFijos from './pantallas/TurnosFijos.jsx';
+import Ajustes from './pantallas/Ajustes.jsx';
 import BarraInferiorAdmin from './componentes/BarraInferiorAdmin.jsx';
+import BarraLateralAdmin from './componentes/BarraLateralAdmin.jsx';
 import { getYo, logout, escucharPerdidaDeSesion } from './apiAdmin.js';
 import './estilosAdmin.css';
 
@@ -54,11 +56,24 @@ export default function AdminApp() {
     return <Login onIngresar={alIngresar} />;
   }
 
+  // .adm-shell y .adm-main no generan caja en celular/tablet (display:
+  // contents, ver estilosAdmin.css), así que ahí la pantalla activa y
+  // la barra de pestañas quedan exactamente como antes. Desde 1024px
+  // se convierten en la barra lateral fija + el área de contenido.
   return (
-    <>
-      {pestania === 'agenda' && <Agenda club={sesion.club} onCerrarSesion={cerrarSesion} />}
-      {pestania === 'turnos-fijos' && <TurnosFijos />}
-      <BarraInferiorAdmin pestania={pestania} onCambiar={setPestania} />
-    </>
+    <div className="adm-shell">
+      <BarraLateralAdmin
+        pestania={pestania}
+        onCambiar={setPestania}
+        club={sesion.club}
+        onCerrarSesion={cerrarSesion}
+      />
+      <div className="adm-main">
+        {pestania === 'agenda' && <Agenda club={sesion.club} onCerrarSesion={cerrarSesion} />}
+        {pestania === 'turnos-fijos' && <TurnosFijos />}
+        {pestania === 'ajustes' && <Ajustes onCerrarSesion={cerrarSesion} />}
+        <BarraInferiorAdmin pestania={pestania} onCambiar={setPestania} />
+      </div>
+    </div>
   );
 }

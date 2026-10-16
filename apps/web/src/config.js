@@ -1,12 +1,23 @@
-// Datos del club. Cuando haya varios clubes esto sale de la API,
-// por ahora se cambia acá y listo.
-export const CLUB = {
-  nombre: '[Nombre del club]',
-  direccion: '[Dirección], Lomas de Zamora',
-};
-
 // Minutos que dura un turno. La API ya los usa para armar la grilla.
 export const DURACION_MIN = 90;
 
-// Mercado Pago todavía no está integrado, así que la seña es un placeholder.
-export const SENIA_TEXTO = '$[SEÑA]';
+// Misma lista que SERVICIOS_DISPONIBLES en apps/api/src/rutasAdmin.js:
+// los checkboxes de Ajustes solo pueden elegir de acá, para no guardar
+// texto libre como servicio. Cada uno tiene su ícono en
+// componentes/InfoClub.jsx (IconoServicio si en algún momento se
+// desincroniza esta lista con esa otra).
+export const SERVICIOS_DISPONIBLES = [
+  'Wi-Fi',
+  'Vestuario',
+  'Gimnasio',
+  'Estacionamiento',
+  'Ayuda médica',
+  'Torneos',
+  'Cumpleaños',
+  'Parrilla',
+  'Escuelita',
+  'Colegios',
+  'Bar / Restaurante',
+  'Quincho',
+  'Alquiler de paletas',
+];

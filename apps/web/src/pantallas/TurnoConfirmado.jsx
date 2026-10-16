@@ -1,5 +1,5 @@
 import { DURACION_MIN } from '../config.js';
-import { formatearPrecio } from '../precios.js';
+import { formatearPrecio, formatearMonto } from '../precios.js';
 import { tituloCorto, horaArgentina } from '../fechas.js';
 import { IconoCalendario, IconoCompartir, IconoTilde } from '../componentes/Iconos.jsx';
 
@@ -40,8 +40,12 @@ export default function TurnoConfirmado({ reserva, fecha, hora, cancha, onOtraRe
               <dd>{DURACION_MIN} min</dd>
             </div>
             <div className="fila">
-              <dt>A pagar en el club</dt>
-              <dd>{formatearPrecio(cancha.precio)}</dd>
+              <dt>{reserva.tipo_pago === 'senia' ? 'Seña' : 'Pagás ahora'}</dt>
+              <dd>{formatearPrecio(reserva.monto_a_pagar)}</dd>
+            </div>
+            <div className="fila">
+              <dt>Resto en el club</dt>
+              <dd>{formatearMonto(reserva.monto_total - reserva.monto_a_pagar)}</dd>
             </div>
           </dl>
         </section>

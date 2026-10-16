@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getDisponibilidad, crearReserva } from './api.js';
+import { getDisponibilidad, crearReserva, getClub } from './api.js';
 import { proximosSieteDias } from './fechas.js';
 import ElegirTurno from './pantallas/ElegirTurno.jsx';
 import ConfirmarReserva from './pantallas/ConfirmarReserva.jsx';
@@ -20,6 +20,21 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(null);
 
+  // Datos del club (nombre, dirección, mapa, horarios, contacto) para
+  // el encabezado y la sección "Dónde estamos" de la pantalla 1. Se
+  // piden una sola vez; si fallan, esas secciones simplemente no
+  // muestran nada en vez de romper el resto de la app.
+  const [club, setClub] = useState(null);
+  useEffect(() => {
+    getClub()
+      .then(setClub)
+      .catch(() => setClub(null));
+  }, []);
+  // Valor por defecto hasta que llegue el real de la API; el que vale
+  // para calcular la seña de verdad es siempre el que calcula el
+  // servidor al reservar, esto es solo para mostrar algo mientras tanto.
+  const [seniaPorcentaje, setSeniaPorcentaje] = useState(50);
+
   const [enviando, setEnviando] = useState(false);
   const [errorReserva, setErrorReserva] = useState(null);
   const [avisoGrilla, setAvisoGrilla] = useState(null);
@@ -39,6 +54,7 @@ export default function App() {
       .then((datos) => {
         if (cancelado) return;
         setCanchas(datos.canchas || []);
+        if (datos.senia_porcentaje != null) setSeniaPorcentaje(datos.senia_porcentaje);
       })
       .catch((err) => {
         if (cancelado) return;
@@ -145,9 +161,11 @@ export default function App() {
   if (pantalla === 'confirmar' && canchaElegida) {
     return (
       <ConfirmarReserva
+        club={club}
         fecha={fecha}
         hora={hora}
         cancha={canchaElegida}
+        seniaPorcentaje={seniaPorcentaje}
         enviando={enviando}
         error={errorReserva}
         onVolver={() => {
@@ -173,6 +191,7 @@ export default function App() {
 
   return (
     <ElegirTurno
+      club={club}
       dias={dias}
       fecha={fecha}
       hora={hora}

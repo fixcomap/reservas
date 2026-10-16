@@ -1,25 +1,85 @@
-import { useState } from 'react';
-import { crearReservaManual, crearBloqueo, cancelarReserva, desactivarTurnoFijo } from '../apiAdmin.js';
-import { linkWhatsApp } from '../util.js';
+import { useEffect, useRef, useState } from 'react';
+import {
+  crearReservaManual,
+  crearBloqueo,
+  cancelarReserva,
+  desactivarTurnoFijo,
+  crearExcepcion,
+  deshacerExcepcion,
+} from '../apiAdmin.js';
+import { linkWhatsApp, formatearPesos } from '../util.js';
 import { IconoX, IconoChat } from './IconosAdmin.jsx';
 
 const RE_TEL = /^\+?[\d\s-]{8,20}$/;
 
-// Panel que sube desde abajo al tocar un turno de la grilla. Si está
-// libre, deja cargar una reserva o bloquearlo. Si está ocupado, muestra
-// los datos del cliente y deja cancelar (o desactivar, si es un fijo).
+// Panel que sube desde abajo al tocar un turno de la grilla.
+// - Libre (y no liberado de un fijo): "Cargar reserva" o "Bloquear".
+// - Libre por una excepción de un fijo: lo mismo, más "Volver a ocupar
+//   con el turno fijo" (deshace la excepción).
+// - Fijo: datos del cliente, "Liberar solo esta fecha" (si no pasó) y
+//   "Desactivar turno fijo" (todas las semanas).
+// - Online / manual / bloqueo: datos del cliente y "Cancelar reserva"
+//   si todavía no pasó; si ya pasó, se puede ver pero no cancelar.
 export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) {
   const esLibre = turno.estado === 'libre';
   const esFijo = turno.estado === 'fijo';
 
-  // 'elegir' | 'cargar' | 'bloquear' — solo se usa cuando el turno está libre
+  // 'elegir' | 'cargar' | 'bloquear' | 'liberar'
   const [modo, setModo] = useState('elegir');
   const [nombre, setNombre] = useState('');
   const [tel, setTel] = useState('');
   const [motivo, setMotivo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
-  const [confirmando, setConfirmando] = useState(false);
+  // null | 'cancelar' | 'desactivar' | 'deshacer'
+  const [confirmando, setConfirmando] = useState(null);
+
+  const hojaRef = useRef(null);
+  const cerrarRef = useRef(null);
+
+  // Al abrir: guardamos qué tenía el foco (el turno que tocaron) para
+  // devolvérselo cuando se cierre, y movemos el foco al botón de
+  // cerrar. Esto corre en cualquier ancho: es comportamiento de
+  // teclado, no apariencia, así que celular también lo tiene.
+  useEffect(() => {
+    const disparador = document.activeElement;
+    cerrarRef.current?.focus();
+    return () => {
+      disparador?.focus?.();
+    };
+  }, []);
+
+  // Escape cierra. Tab no deja que el foco se escape del panel
+  // (si estás en el último elemento tocable y tocás Tab, volvés al
+  // primero; con Shift+Tab, al revés).
+  useEffect(() => {
+    function alTecla(evento) {
+      if (evento.key === 'Escape') {
+        evento.preventDefault();
+        onCerrar();
+        return;
+      }
+      if (evento.key !== 'Tab' || !hojaRef.current) return;
+
+      const tocables = hojaRef.current.querySelectorAll(
+        'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])'
+      );
+      if (tocables.length === 0) return;
+      const primero = tocables[0];
+      const ultimo = tocables[tocables.length - 1];
+
+      if (evento.shiftKey && document.activeElement === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    }
+
+    document.addEventListener('keydown', alTecla);
+    return () => document.removeEventListener('keydown', alTecla);
+  }, [onCerrar]);
 
   async function cargarReserva(evento) {
     evento.preventDefault();
@@ -68,15 +128,51 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
     }
   }
 
-  async function confirmarCancelacion() {
+  async function liberarFecha(evento) {
+    evento.preventDefault();
     setError(null);
     setEnviando(true);
     try {
-      if (esFijo) {
-        await desactivarTurnoFijo(turno.turno_fijo_id);
-      } else {
-        await cancelarReserva(turno.reserva_id);
-      }
+      await crearExcepcion(turno.turno_fijo_id, { fecha, motivo: motivo.trim() || undefined });
+      onCambio();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function confirmarDesactivar() {
+    setError(null);
+    setEnviando(true);
+    try {
+      await desactivarTurnoFijo(turno.turno_fijo_id);
+      onCambio();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function confirmarCancelar() {
+    setError(null);
+    setEnviando(true);
+    try {
+      await cancelarReserva(turno.reserva_id);
+      onCambio();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function confirmarDeshacer() {
+    setError(null);
+    setEnviando(true);
+    try {
+      await deshacerExcepcion(turno.turno_fijo_id, fecha);
       onCambio();
     } catch (err) {
       setError(err.message);
@@ -90,6 +186,7 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
   return (
     <div className="adm-hoja-fondo" onClick={onCerrar}>
       <div
+        ref={hojaRef}
         className="adm-hoja"
         role="dialog"
         aria-modal="true"
@@ -101,19 +198,52 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
             <p className="adm-hoja-hora">{turno.hora}</p>
             <p className="adm-hoja-cancha">{cancha.nombre}</p>
           </div>
-          <button type="button" className="adm-hoja-cerrar" onClick={onCerrar} aria-label="Cerrar">
+          <button ref={cerrarRef} type="button" className="adm-hoja-cerrar" onClick={onCerrar} aria-label="Cerrar">
             <IconoX />
           </button>
         </div>
 
         {esLibre && modo === 'elegir' && (
           <div className="adm-hoja-opciones">
+            {turno.liberado && (
+              <p className="letra-chica adm-nota-liberado">
+                Este turno es de un fijo, pero esta fecha está liberada.
+              </p>
+            )}
             <button type="button" className="boton boton-verde boton-ancho" onClick={() => setModo('cargar')}>
               Cargar reserva
             </button>
             <button type="button" className="adm-boton-secundario" onClick={() => setModo('bloquear')}>
               Bloquear
             </button>
+            {turno.liberado && !confirmando && (
+              <button type="button" className="adm-boton-secundario" onClick={() => setConfirmando('deshacer')}>
+                Volver a ocupar con el turno fijo
+              </button>
+            )}
+            {turno.liberado && confirmando === 'deshacer' && (
+              <div className="adm-confirmar">
+                <p>¿Volver a ocupar este turno con el fijo? Deja de estar liberado.</p>
+                {error && (
+                  <p className="aviso-error" role="alert">
+                    {error}
+                  </p>
+                )}
+                <div className="adm-confirmar-botones">
+                  <button
+                    type="button"
+                    className="adm-boton-secundario"
+                    onClick={() => setConfirmando(null)}
+                    disabled={enviando}
+                  >
+                    No
+                  </button>
+                  <button type="button" className="boton boton-verde" onClick={confirmarDeshacer} disabled={enviando}>
+                    {enviando ? 'Confirmando…' : 'Sí, confirmar'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -174,7 +304,34 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
           </form>
         )}
 
-        {!esLibre && (
+        {esFijo && modo === 'liberar' && (
+          <form onSubmit={liberarFecha} noValidate>
+            <p className="letra-chica">
+              Esta fecha queda libre para cargar una reserva o que la reserve un jugador. El fijo se sigue repitiendo
+              las demás semanas.
+            </p>
+            <div className="campo">
+              <label htmlFor="adm-motivo-liberar">Motivo (opcional)</label>
+              <input
+                id="adm-motivo-liberar"
+                type="text"
+                placeholder="Ej: Avisó que no viene"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+              />
+            </div>
+            {error && (
+              <p className="aviso-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="boton boton-verde boton-ancho" disabled={enviando}>
+              {enviando ? 'Liberando…' : 'Liberar esta fecha'}
+            </button>
+          </form>
+        )}
+
+        {!esLibre && modo === 'elegir' && (
           <div className="adm-hoja-detalle">
             <dl className="filas">
               <div className="fila">
@@ -197,6 +354,23 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
                   {turno.estado === 'bloqueo' && 'Turno bloqueado'}
                 </dd>
               </div>
+              {turno.estado === 'online' && (
+                <>
+                  <div className="fila">
+                    <dt>Total del turno</dt>
+                    <dd>{formatearPesos(turno.monto_total)}</dd>
+                  </div>
+                  <div className="fila">
+                    <dt>Forma de pago</dt>
+                    <dd>{turno.tipo_pago === 'senia' ? 'Seña' : 'Total'}</dd>
+                  </div>
+                  <div className="fila">
+                    <dt>Pagado</dt>
+                    {/* Todavía $0 siempre: Mercado Pago no está integrado. */}
+                    <dd>{formatearPesos(turno.monto_pagado)}</dd>
+                  </div>
+                </>
+              )}
             </dl>
 
             {wa && (
@@ -212,20 +386,58 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
               </p>
             )}
 
-            {!confirmando && (
-              <button type="button" className="boton-texto-rojo" onClick={() => setConfirmando(true)}>
+            {esFijo && !turno.pasado && !confirmando && (
+              <button type="button" className="adm-boton-secundario" onClick={() => setModo('liberar')}>
+                Liberar solo esta fecha
+              </button>
+            )}
+
+            {!confirmando && (esFijo || !turno.pasado) && (
+              <button
+                type="button"
+                className="boton-texto-rojo"
+                onClick={() => setConfirmando(esFijo ? 'desactivar' : 'cancelar')}
+              >
                 {esFijo ? 'Desactivar turno fijo' : 'Cancelar reserva'}
               </button>
             )}
 
-            {confirmando && (
+            {!esFijo && turno.pasado && (
+              <p className="letra-chica">Este turno ya pasó, no se puede cancelar.</p>
+            )}
+
+            {confirmando === 'desactivar' && (
               <div className="adm-confirmar">
-                <p>{esFijo ? '¿Desactivar este turno fijo?' : '¿Cancelar esta reserva?'}</p>
+                <p>¿Desactivar este turno fijo? Deja de repetirse todas las semanas, no solo hoy.</p>
                 <div className="adm-confirmar-botones">
-                  <button type="button" className="adm-boton-secundario" onClick={() => setConfirmando(false)} disabled={enviando}>
+                  <button
+                    type="button"
+                    className="adm-boton-secundario"
+                    onClick={() => setConfirmando(null)}
+                    disabled={enviando}
+                  >
                     No
                   </button>
-                  <button type="button" className="boton boton-rojo" onClick={confirmarCancelacion} disabled={enviando}>
+                  <button type="button" className="boton boton-rojo" onClick={confirmarDesactivar} disabled={enviando}>
+                    {enviando ? 'Confirmando…' : 'Sí, confirmar'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirmando === 'cancelar' && (
+              <div className="adm-confirmar">
+                <p>¿Cancelar esta reserva?</p>
+                <div className="adm-confirmar-botones">
+                  <button
+                    type="button"
+                    className="adm-boton-secundario"
+                    onClick={() => setConfirmando(null)}
+                    disabled={enviando}
+                  >
+                    No
+                  </button>
+                  <button type="button" className="boton boton-rojo" onClick={confirmarCancelar} disabled={enviando}>
                     {enviando ? 'Confirmando…' : 'Sí, confirmar'}
                   </button>
                 </div>
