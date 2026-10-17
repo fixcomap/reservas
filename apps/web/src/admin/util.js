@@ -13,11 +13,20 @@ export function linkWhatsApp(telCrudo) {
 
 // Formato de pesos para montos reales del panel (total de una reserva,
 // lo pagado hasta ahora...). A diferencia de src/precios.js (la del
-// jugador), acá el 0 es un valor real — "pagado: $0" porque todavía no
-// se integró Mercado Pago — y no "todavía no hay precio cargado", así
+// jugador), acá el 0 es un valor real — "pagado: $0" porque el jugador
+// todavía no pagó — y no "todavía no hay precio cargado", así
 // que nunca lo cambiamos por un texto como "Consultar".
 export function formatearPesos(monto) {
   const numero = Number(monto);
   if (!Number.isFinite(numero)) return '—';
   return '$' + numero.toLocaleString('es-AR');
 }
+
+// Cómo se muestra pago_estado (columna de reservas, solo online).
+export const TEXTO_PAGO = {
+  pendiente: 'Pendiente',
+  aprobado: 'Aprobado',
+  rechazado: 'Rechazado',
+  reembolsado: 'Reembolsado',
+  reembolso_pendiente: 'Reembolso pendiente',
+};

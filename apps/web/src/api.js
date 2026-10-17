@@ -45,3 +45,10 @@ export function crearReserva(datos) {
     body: JSON.stringify(datos),
   });
 }
+
+// Estado de una reserva por su link secreto (/reserva/<token>). La API
+// le pregunta a Mercado Pago por el pago cada vez: nunca usamos lo que
+// diga la URL de vuelta (?status=approved...).
+export function getEstadoReserva(token) {
+  return pedir(`/reservas/estado/${encodeURIComponent(token)}`);
+}

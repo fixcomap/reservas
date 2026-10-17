@@ -75,6 +75,14 @@ export function IconoTilde({ tamanio = 34 }) {
   );
 }
 
+export function IconoCruz({ tamanio = 34 }) {
+  return (
+    <svg {...base} strokeWidth={2.6} width={tamanio} height={tamanio} viewBox="0 0 24 24">
+      <path d="M7 7l10 10M17 7 7 17" />
+    </svg>
+  );
+}
+
 // ===========================================================
 // Sección "Dónde estamos" (info del club): contacto y servicios
 // ===========================================================

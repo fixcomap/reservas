@@ -12,5 +12,14 @@ services:
       - datos:/var/lib/postgresql/data
       - ./db/migrations:/docker-entrypoint-initdb.d
 
+  # Solo para desarrollo: atrapa todos los mails que manda la API (no
+  # salen a internet) y los muestra en http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.27.0
+    container_name: reservas-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   datos:

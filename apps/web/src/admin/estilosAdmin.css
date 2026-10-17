@@ -1003,3 +1003,65 @@
     min-height: 52px;
   }
 }
+
+/* ===========================================================
+   Pagos para devolver (reembolso pendiente)
+   =========================================================== */
+.adm-reembolsos {
+  background: #FDECEC;
+  border: 1.5px solid #E8A3A3;
+  border-radius: 14px;
+  padding: 14px;
+  color: #7A1F1F;
+}
+
+.adm-reembolsos-titulo {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.adm-reembolsos-texto {
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.adm-reembolsos-lista {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adm-reembolso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--blanco);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.adm-reembolso-nombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--texto);
+}
+
+.adm-reembolso-detalle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+  margin-top: 2px;
+}
+
+.adm-reembolsos-error {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-top: 8px;
+}

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAgenda } from '../apiAdmin.js';
-import { hoyEnArgentina, sumarDias, tituloAgenda, diaDeLaSemana, nombreDiaCorto, horaArgentina } from '../../fechas.js';
+import { getAgenda, reintentarReembolso } from '../apiAdmin.js';
+import {
+  hoyEnArgentina,
+  sumarDias,
+  tituloAgenda,
+  diaDeLaSemana,
+  nombreDiaCorto,
+  horaArgentina,
+  fechaCorta,
+} from '../../fechas.js';
 import { formatearPesos } from '../util.js';
 import { DURACION_MIN } from '../../config.js';
 import { Cargando, ErrorRed } from '../../componentes/Estados.jsx';
@@ -33,7 +41,12 @@ function datosCelda(turno, fecha) {
       return {
         clase: 'adm-turno--online',
         titulo: turno.cliente_nombre || 'Reserva online',
-        subtitulo: turno.reserva_estado === 'confirmada' ? 'Seña pagada' : 'Pendiente de pago',
+        subtitulo:
+          turno.pago_estado === 'aprobado'
+            ? turno.tipo_pago === 'senia'
+              ? 'Seña pagada'
+              : 'Pago total'
+            : 'Pendiente de pago',
       };
     case 'manual':
       return { clase: 'adm-turno--manual', titulo: turno.cliente_nombre || 'Cliente', subtitulo: 'Por WhatsApp' };
@@ -48,6 +61,66 @@ function datosCelda(turno, fecha) {
     default:
       return { clase: '', titulo: '', subtitulo: '' };
   }
+}
+
+// Pagos que llegaron cuando el turno ya era de otro y que Mercado Pago
+// no devolvió solo. Son plata de un jugador que el club tiene que
+// devolver: van arriba de todo, en rojo, sea cual sea el día que se
+// está mirando. "Reintentar" vuelve a pedir la devolución (y si ya la
+// hiciste a mano desde Mercado Pago, lo detecta y la saca de la lista).
+function ReembolsosPendientes({ lista, onCambio }) {
+  const [reintentando, setReintentando] = useState(null);
+  const [error, setError] = useState(null);
+
+  if (!lista || lista.length === 0) return null;
+
+  async function reintentar(reservaId) {
+    setReintentando(reservaId);
+    setError(null);
+    try {
+      await reintentarReembolso(reservaId);
+      onCambio();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setReintentando(null);
+    }
+  }
+
+  return (
+    <section className="adm-reembolsos" role="alert">
+      <h2 className="adm-reembolsos-titulo">
+        {lista.length === 1 ? 'Hay 1 pago para devolver' : `Hay ${lista.length} pagos para devolver`}
+      </h2>
+      <p className="adm-reembolsos-texto">
+        Estos jugadores pagaron cuando el turno ya estaba ocupado y la devolución automática falló.
+      </p>
+      <ul className="adm-reembolsos-lista">
+        {lista.map((r) => (
+          <li key={r.reserva_id} className="adm-reembolso">
+            <div>
+              <p className="adm-reembolso-nombre">
+                {r.cliente_nombre} · {formatearPesos(r.monto)}
+              </p>
+              <p className="adm-reembolso-detalle">
+                {r.cancha_nombre} · {fechaCorta(r.fecha)} {r.hora}
+                {r.cliente_tel ? ` · ${r.cliente_tel}` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="adm-boton-secundario"
+              onClick={() => reintentar(r.reserva_id)}
+              disabled={reintentando != null}
+            >
+              {reintentando === r.reserva_id ? 'Reintentando…' : 'Reintentar devolución'}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="adm-reembolsos-error">{error}</p>}
+    </section>
+  );
 }
 
 export default function Agenda({ club, onCerrarSesion }) {
@@ -193,7 +266,9 @@ export default function Agenda({ club, onCerrarSesion }) {
               <p className="adm-stat-etiqueta">Reservas hoy</p>
             </div>
             <div className="adm-stat">
-              <p className="adm-stat-valor">{resumen?.senias_cobradas == null ? '—' : resumen.senias_cobradas}</p>
+              <p className="adm-stat-valor">
+                {resumen?.senias_cobradas == null ? '—' : formatearPesos(resumen.senias_cobradas)}
+              </p>
               <p className="adm-stat-etiqueta">Señas cobradas</p>
             </div>
             <div className="adm-stat">
@@ -237,6 +312,7 @@ export default function Agenda({ club, onCerrarSesion }) {
       </div>
 
       <div className="contenido">
+        <ReembolsosPendientes lista={datos?.reembolsos_pendientes} onCambio={() => cargar(fecha)} />
         {cargando && <Cargando />}
         {!cargando && error && <ErrorRed mensaje={error} onReintentar={() => cargar(fecha)} />}
 

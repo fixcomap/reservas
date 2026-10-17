@@ -107,8 +107,10 @@ function calcularSenia(precio, seniaPorcentaje) {
   return Math.round((precio * seniaPorcentaje) / 100);
 }
 
-// Las reservas 'retenidas' vencen a los 10 minutos si nadie pagó la
-// seña. Esto las libera para que dejen de bloquear el turno.
+// Las reservas 'retenidas' vencen a los 15 minutos si nadie pagó. Esto
+// las libera para que dejen de bloquear el turno. Si el pago llega
+// igual después, verificarPago (pagos.js) decide si se confirma o se
+// devuelve la plata.
 async function liberarVencidas(ejecutor = pool) {
   await ejecutor.query(`
     UPDATE reservas SET estado = 'cancelada'

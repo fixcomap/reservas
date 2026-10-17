@@ -110,3 +110,7 @@ export function getClubInfo() {
 export function guardarClubInfo(datos) {
   return pedir('/club-info', { method: 'PUT', body: JSON.stringify(datos) });
 }
+
+export function reintentarReembolso(reservaId) {
+  return pedir(`/reservas/${reservaId}/reintentar-reembolso`, { method: 'POST' });
+}

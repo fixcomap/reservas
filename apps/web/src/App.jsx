@@ -3,7 +3,6 @@ import { getDisponibilidad, crearReserva, getClub } from './api.js';
 import { proximosSieteDias } from './fechas.js';
 import ElegirTurno from './pantallas/ElegirTurno.jsx';
 import ConfirmarReserva from './pantallas/ConfirmarReserva.jsx';
-import TurnoConfirmado from './pantallas/TurnoConfirmado.jsx';
 
 // Acá vive todo el estado de la app. Las pantallas no guardan nada propio
 // (salvo lo que el usuario está tipeando), solo reciben datos y avisan
@@ -11,7 +10,7 @@ import TurnoConfirmado from './pantallas/TurnoConfirmado.jsx';
 export default function App() {
   const dias = useMemo(() => proximosSieteDias(), []);
 
-  const [pantalla, setPantalla] = useState('elegir'); // elegir | confirmar | listo
+  const [pantalla, setPantalla] = useState('elegir'); // elegir | confirmar
   const [fecha, setFecha] = useState(dias[0].iso);
   const [hora, setHora] = useState(null);
   const [canchaId, setCanchaId] = useState(null);
@@ -38,7 +37,17 @@ export default function App() {
   const [enviando, setEnviando] = useState(false);
   const [errorReserva, setErrorReserva] = useState(null);
   const [avisoGrilla, setAvisoGrilla] = useState(null);
-  const [reserva, setReserva] = useState(null);
+
+  // Si el jugador vuelve con "atrás" desde Mercado Pago, el navegador
+  // puede restaurar la página tal como quedó (con el botón en
+  // "Yendo a Mercado Pago…"): lo destrabamos.
+  useEffect(() => {
+    function alVolver(evento) {
+      if (evento.persisted) setEnviando(false);
+    }
+    window.addEventListener('pageshow', alVolver);
+    return () => window.removeEventListener('pageshow', alVolver);
+  }, []);
 
   // Un contador que subimos a mano cuando queremos volver a pedir
   // la disponibilidad del mismo día (reintentar, o después de un 409).
@@ -127,10 +136,11 @@ export default function App() {
         hora,
         ...datosCliente,
       });
-      // Guardamos una foto del turno: la disponibilidad se va a recargar
-      // y no queremos que el comprobante cambie por debajo.
-      setReserva({ ...creada, fecha, hora, cancha: canchaElegida });
-      setPantalla('listo');
+      // El turno quedó retenido: a pagar. Mercado Pago vuelve a
+      // /reserva/<token>, que muestra cómo quedó (ver EstadoReserva).
+      // "enviando" queda prendido a propósito: la página se va.
+      window.location.assign(creada.checkout_url);
+      return;
     } catch (err) {
       if (err.estado === 409) {
         // Alguien reservó primero: lo mandamos de vuelta a la grilla
@@ -142,20 +152,8 @@ export default function App() {
       } else {
         setErrorReserva(err.message);
       }
-    } finally {
-      setEnviando(false);
     }
-  }
-
-  function empezarDeNuevo() {
-    setPantalla('elegir');
-    setReserva(null);
-    setHora(null);
-    setCanchaId(null);
-    setErrorReserva(null);
-    setAvisoGrilla(null);
-    setFecha(dias[0].iso);
-    recargarDisponibilidad();
+    setEnviando(false);
   }
 
   if (pantalla === 'confirmar' && canchaElegida) {
@@ -173,18 +171,6 @@ export default function App() {
           setPantalla('elegir'); // la selección queda como estaba
         }}
         onReservar={reservar}
-      />
-    );
-  }
-
-  if (pantalla === 'listo' && reserva) {
-    return (
-      <TurnoConfirmado
-        reserva={reserva}
-        fecha={reserva.fecha}
-        hora={reserva.hora}
-        cancha={reserva.cancha}
-        onOtraReserva={empezarDeNuevo}
       />
     );
   }

@@ -7,7 +7,7 @@ import {
   crearExcepcion,
   deshacerExcepcion,
 } from '../apiAdmin.js';
-import { linkWhatsApp, formatearPesos } from '../util.js';
+import { linkWhatsApp, formatearPesos, TEXTO_PAGO } from '../util.js';
 import { IconoX, IconoChat } from './IconosAdmin.jsx';
 
 const RE_TEL = /^\+?[\d\s-]{8,20}$/;
@@ -344,12 +344,17 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
                   <dd>{turno.cliente_tel}</dd>
                 </div>
               )}
+              {turno.cliente_email && (
+                <div className="fila">
+                  <dt>Email</dt>
+                  <dd>{turno.cliente_email}</dd>
+                </div>
+              )}
               <div className="fila">
                 <dt>Origen</dt>
                 <dd>
                   {esFijo && 'Turno fijo'}
-                  {turno.estado === 'online' &&
-                    (turno.reserva_estado === 'confirmada' ? 'Online · seña pagada' : 'Online · pendiente de pago')}
+                  {turno.estado === 'online' && 'Online'}
                   {turno.estado === 'manual' && 'Cargada a mano'}
                   {turno.estado === 'bloqueo' && 'Turno bloqueado'}
                 </dd>
@@ -365,8 +370,11 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
                     <dd>{turno.tipo_pago === 'senia' ? 'Seña' : 'Total'}</dd>
                   </div>
                   <div className="fila">
-                    <dt>Pagado</dt>
-                    {/* Todavía $0 siempre: Mercado Pago no está integrado. */}
+                    <dt>Estado del pago</dt>
+                    <dd>{TEXTO_PAGO[turno.pago_estado] || '—'}</dd>
+                  </div>
+                  <div className="fila">
+                    <dt>Pagado por Mercado Pago</dt>
                     <dd>{formatearPesos(turno.monto_pagado)}</dd>
                   </div>
                 </>

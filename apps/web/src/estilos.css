@@ -1035,6 +1035,35 @@ button:disabled {
   font-weight: 700;
 }
 
+/* Variantes de la pantalla 3 cuando el pago todavía no se confirmó
+   (espera) o no se pudo usar (rechazado, devuelto). El verde queda
+   solo para "turno confirmado". */
+.exito-cabecera--espera {
+  background: var(--azul-oscuro);
+}
+
+.exito-cabecera--espera .exito-circulo {
+  color: var(--azul-oscuro);
+}
+
+.exito-cabecera--error {
+  background: #9C2A2A;
+}
+
+.exito-cabecera--error .exito-circulo {
+  color: #9C2A2A;
+}
+
+.pastilla--espera {
+  background: #E3F0FA;
+  color: #0F4F80;
+}
+
+.pastilla--error {
+  background: #FDECEC;
+  color: #9C2A2A;
+}
+
 .reserva-fecha {
   font-size: 19px;
   font-weight: 800;

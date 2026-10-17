@@ -10,12 +10,46 @@ const {
   calcularSenia,
 } = require('./turnos');
 const rutasAdmin = require('./rutasAdmin');
+const rateLimit = require('express-rate-limit');
+const { crearOrden } = require('./mercadopago');
+const { generarToken, hashToken, RE_TOKEN, SQL_MONTO_A_PAGAR, verificarPago } = require('./pagos');
+const { webhookMercadoPago } = require('./webhookMercadoPago');
+const { enviarConfirmacion } = require('./mail');
 
 const app = express();
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 const PORT = process.env.API_PORT || 3000;
 const CLUB_ID = Number(process.env.CLUB_ID || 1);
+
+// Adónde vuelve el jugador después de pagar: /reserva/<token> del front.
+const FRONT_URL = (process.env.FRONT_URL || 'http://localhost:5173').replace(/\/$/, '');
+
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Lo que dura la retención de una reserva online mientras se paga.
+const MINUTOS_RETENCION = 15;
+
+// "Seña turno Cancha 1 · Vie 16 oct 10:30": lo que ve el jugador en el
+// checkout de Mercado Pago y en su resumen de la tarjeta.
+function tituloOrden(tipoPago, canchaNombre, inicio, zonaHoraria) {
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat('es-AR', {
+      timeZone: zonaHoraria,
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(inicio)
+      .map((p) => [p.type, p.value.replace('.', '')])
+  );
+  const dia = partes.weekday.charAt(0).toUpperCase() + partes.weekday.slice(1);
+  const prefijo = tipoPago === 'senia' ? 'Seña turno' : 'Pago total turno';
+  return `${prefijo} ${canchaNombre} · ${dia} ${partes.day} ${partes.month} ${partes.hour}:${partes.minute}`;
+}
 
 // Para chequear rápido que la API ve la base
 app.get('/salud', async (req, res) => {
@@ -139,7 +173,7 @@ app.post('/reservas', async (req, res) => {
   // desestructuran, así que no hay forma de que lleguen a usarse. Los
   // montos los calcula el servidor más abajo, con el precio y el
   // porcentaje que están guardados en la base en este momento.
-  const { cancha_id, fecha, hora, cliente_nombre, cliente_tel, tipo_pago } = req.body || {};
+  const { cancha_id, fecha, hora, cliente_nombre, cliente_tel, cliente_email, tipo_pago } = req.body || {};
 
   // 1. Validar lo que llega: nunca confiar en el cliente
   if (!Number.isInteger(cancha_id)) {
@@ -159,9 +193,18 @@ app.post('/reservas', async (req, res) => {
   if (!/^\+?[\d\s-]{8,20}$/.test(tel)) {
     return res.status(400).json({ error: 'Teléfono inválido' });
   }
+  // Sin espacios ni saltos de línea (\s): además de no ser un mail
+  // válido, un salto de línea acá podría colar headers en el mail.
+  const email = String(cliente_email || '').trim().toLowerCase();
+  if (email.length > 254 || !RE_EMAIL.test(email)) {
+    return res.status(400).json({ error: 'Email inválido' });
+  }
   if (tipo_pago !== 'senia' && tipo_pago !== 'total') {
     return res.status(400).json({ error: "Usá tipo_pago='senia' o tipo_pago='total'" });
   }
+
+  const token = generarToken();
+  const tokenHash = hashToken(token);
 
   try {
     await liberarVencidas();
@@ -192,21 +235,61 @@ app.post('/reservas', async (req, res) => {
       const montoSenia = calcularSenia(turno.precio, turno.seniaPorcentaje);
       const montoAPagar = tipo_pago === 'senia' ? montoSenia : montoTotal;
 
-      // 3. Crear la reserva retenida por 10 minutos
+      // 3. Crear la reserva retenida mientras el jugador paga, con el
+      // hash de su link secreto (el token en sí no se guarda).
       const insert = await client.query(
         `INSERT INTO reservas
            (cancha_id, horario, estado, origen, cliente_nombre, cliente_tel, vence_en,
-            monto_total, monto_senia, tipo_pago)
-         VALUES ($1, tstzrange($2, $3), 'retenida', 'online', $4, $5, now() + interval '10 minutes',
-                 $6, $7, $8)
-         RETURNING id, vence_en`,
-        [cancha_id, turno.inicio, turno.fin, nombre, tel, montoTotal, montoSenia, tipo_pago]
+            monto_total, monto_senia, tipo_pago, token_hash, pago_estado, cliente_email)
+         VALUES ($1, tstzrange($2, $3), 'retenida', 'online', $4, $5, now() + make_interval(mins => $6),
+                 $7, $8, $9, $10, 'pendiente', $11)
+         RETURNING id, vence_en,
+           (SELECT c.nombre FROM canchas c WHERE c.id = $1) AS cancha_nombre,
+           (SELECT cl.zona_horaria FROM canchas c JOIN clubes cl ON cl.id = c.club_id WHERE c.id = $1) AS zona_horaria`,
+        [cancha_id, turno.inicio, turno.fin, nombre, tel, MINUTOS_RETENCION, montoTotal, montoSenia, tipo_pago, tokenHash, email]
       );
-      return { ...insert.rows[0], monto_total: montoTotal, monto_senia: montoSenia, monto_a_pagar: montoAPagar };
+      return {
+        ...insert.rows[0],
+        inicio: turno.inicio,
+        monto_total: montoTotal,
+        monto_senia: montoSenia,
+        monto_a_pagar: montoAPagar,
+      };
     });
 
+    // 4. Crear la orden de Mercado Pago, ya afuera de la transacción
+    // (es un pedido HTTP: no tiene sentido tener la cancha bloqueada
+    // mientras tanto; la reserva retenida ya cuida el turno).
+    let orden;
+    try {
+      orden = await crearOrden({
+        reservaId: resultado.id,
+        monto: resultado.monto_a_pagar,
+        titulo: tituloOrden(tipo_pago, resultado.cancha_nombre, resultado.inicio, resultado.zona_horaria),
+        urlRetorno: `${FRONT_URL}/reserva/${token}`,
+        venceEnMinutos: MINUTOS_RETENCION,
+        // Misma clave para el mismo pedido: si crearOrden reintenta, no
+        // se crean dos órdenes. El pedazo del hash la hace única aunque
+        // se reinicie la base y los ids vuelvan a empezar.
+        idempotencia: `reserva-${resultado.id}-${tokenHash.slice(0, 16)}`,
+      });
+      await pool.query('UPDATE reservas SET mp_order_id = $2 WHERE id = $1', [resultado.id, orden.id]);
+    } catch (err) {
+      console.error(`No se pudo crear la orden de Mercado Pago para la reserva ${resultado.id}: ${err.message}`);
+      // Sin orden no hay forma de pagar: se suelta el turno.
+      await pool
+        .query(`UPDATE reservas SET estado = 'cancelada' WHERE id = $1 AND estado = 'retenida'`, [resultado.id])
+        .catch((e) => console.error(e));
+      return res.status(502).json({
+        error: 'No pudimos iniciar el pago con Mercado Pago. Probá de nuevo en unos minutos.',
+      });
+    }
+
+    // El token se devuelve esta única vez: es lo que le da acceso al
+    // jugador a /reserva/<token>.
     res.status(201).json({
-      id: resultado.id,
+      token,
+      checkout_url: orden.checkout_url,
       vence_en: resultado.vence_en,
       monto_total: resultado.monto_total,
       monto_senia: resultado.monto_senia,
@@ -225,6 +308,88 @@ app.post('/reservas', async (req, res) => {
     res.status(500).json({ error: 'Error interno' });
   }
 });
+
+// Cada consulta de estado le pregunta a Mercado Pago por la orden, así
+// que se limita para que nadie la use para martillar su API desde acá.
+const limitadorEstado = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas consultas. Esperá un minuto y actualizá.' },
+});
+
+const SQL_ESTADO_RESERVA = `
+  SELECT r.id, r.mp_order_id, r.pago_estado, r.tipo_pago, r.monto_total, r.monto_pagado,
+         ${SQL_MONTO_A_PAGAR} AS monto_a_pagar,
+         CASE WHEN r.estado = 'retenida' AND r.vence_en <= now() THEN 'vencida' ELSE r.estado END AS estado,
+         r.vence_en, r.pagado_en,
+         to_char(lower(r.horario) AT TIME ZONE cl.zona_horaria, 'YYYY-MM-DD') AS fecha,
+         to_char(lower(r.horario) AT TIME ZONE cl.zona_horaria, 'HH24:MI') AS hora,
+         c.nombre AS cancha_nombre, c.descripcion AS cancha_descripcion, c.duracion_min
+  FROM reservas r
+  JOIN canchas c ON c.id = r.cancha_id
+  JOIN clubes cl ON cl.id = c.club_id
+  WHERE r.token_hash = $1 AND r.origen = 'online'
+`;
+
+// Estado de UNA reserva, para la vuelta del pago (/reserva/<token>). Se
+// llega solo con el token secreto, nunca con el id. No devuelve el
+// teléfono ni el nombre: quien tenga el link ve el turno y el pago, nada más.
+app.get('/reservas/estado/:token', limitadorEstado, async (req, res) => {
+  const { token } = req.params;
+  if (!RE_TOKEN.test(token)) {
+    return res.status(404).json({ error: 'No encontramos esa reserva' });
+  }
+  const tokenHash = hashToken(token);
+
+  try {
+    let { rows } = await pool.query(SQL_ESTADO_RESERVA, [tokenHash]);
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'No encontramos esa reserva' });
+    }
+
+    // Lo que diga la URL de retorno (?status=approved...) se ignora a
+    // propósito: el estado sale de preguntarle a Mercado Pago.
+    if (rows[0].mp_order_id && ['pendiente', 'rechazado', 'reembolso_pendiente'].includes(rows[0].pago_estado)) {
+      try {
+        await verificarPago(rows[0].id);
+        ({ rows } = await pool.query(SQL_ESTADO_RESERVA, [tokenHash]));
+      } catch (err) {
+        // Si Mercado Pago no responde, mostramos lo último que sabemos;
+        // el jugador puede tocar "Actualizar" en un rato.
+        console.error(`No se pudo verificar el pago de la reserva ${rows[0].id}: ${err.message}`);
+      }
+    }
+
+    const r = rows[0];
+    // Por si el mail falló cuando se confirmó (SMTP caído, por ejemplo):
+    // cada visita a la reserva lo reintenta. Si ya salió, no hace nada.
+    if (r.estado === 'confirmada' && r.pago_estado === 'aprobado') {
+      enviarConfirmacion(r.id);
+    }
+    res.json({
+      numero: r.id,
+      fecha: r.fecha,
+      hora: r.hora,
+      cancha: { nombre: r.cancha_nombre, descripcion: r.cancha_descripcion },
+      duracion_min: r.duracion_min,
+      estado: r.estado, // retenida | vencida | confirmada | cancelada
+      pago_estado: r.pago_estado,
+      tipo_pago: r.tipo_pago,
+      monto_total: r.monto_total,
+      monto_a_pagar: r.monto_a_pagar,
+      monto_pagado: r.monto_pagado,
+      vence_en: r.vence_en,
+      pagado_en: r.pagado_en,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.post('/webhooks/mercadopago', webhookMercadoPago);
 
 app.use('/admin', rutasAdmin);
 

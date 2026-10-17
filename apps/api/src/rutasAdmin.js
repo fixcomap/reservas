@@ -12,6 +12,7 @@ const {
   ErrorTurno,
 } = require('./turnos');
 const { verificarPassword, hashFalso, crearSesion, destruirSesion, requireAdmin } = require('./auth');
+const { verificarPago } = require('./pagos');
 
 const router = express.Router();
 
@@ -224,10 +225,12 @@ const SQL_AGENDA = `
          r.origen AS reserva_origen,
          r.cliente_nombre AS reserva_nombre,
          r.cliente_tel AS reserva_tel,
+         r.cliente_email AS reserva_email,
          r.vence_en AS reserva_vence_en,
          r.monto_total AS reserva_monto_total,
          r.tipo_pago AS reserva_tipo_pago,
-         r.monto_pagado AS reserva_monto_pagado
+         r.monto_pagado AS reserva_monto_pagado,
+         r.pago_estado AS reserva_pago_estado
   FROM canchas c
   JOIN clubes cl ON cl.id = c.club_id
   JOIN horarios_apertura h
@@ -257,13 +260,19 @@ router.get('/agenda', async (req, res) => {
 
   try {
     await liberarVencidas();
-    const { rows } = await pool.query(SQL_AGENDA, [fecha, req.admin.clubId]);
+    const [{ rows }, { rows: reembolsosPendientes }] = await Promise.all([
+      pool.query(SQL_AGENDA, [fecha, req.admin.clubId]),
+      pool.query(SQL_REEMBOLSOS_PENDIENTES, [req.admin.clubId]),
+    ]);
 
     const ahora = new Date();
     const canchas = [];
     const porId = new Map();
     let reservas = 0;
     let libres = 0;
+    // Lo cobrado por Mercado Pago (seña o total) de los turnos de este
+    // día. Solo cuenta lo aprobado: un reembolso no es plata cobrada.
+    let seniasCobradas = 0;
 
     for (const r of rows) {
       if (!porId.has(r.cancha_id)) {
@@ -295,14 +304,17 @@ router.get('/agenda', async (req, res) => {
           reserva_estado: r.reserva_estado,
           cliente_nombre: r.reserva_nombre,
           cliente_tel: r.reserva_tel,
+          cliente_email: r.reserva_email,
           vence_en: r.reserva_vence_en,
           monto_total: r.reserva_monto_total,
           tipo_pago: r.reserva_tipo_pago,
           monto_pagado: r.reserva_monto_pagado,
+          pago_estado: r.reserva_pago_estado,
         };
         // Un bloqueo no es una reserva de un cliente, así que no cuenta
         // ni como "reservas hoy" ni como turno libre.
         if (r.reserva_origen !== 'bloqueo') reservas++;
+        if (r.reserva_pago_estado === 'aprobado') seniasCobradas += r.reserva_monto_pagado;
       } else if (r.turno_fijo_liberado_id) {
         turno = {
           hora: r.hora,
@@ -322,11 +334,63 @@ router.get('/agenda', async (req, res) => {
 
     res.json({
       fecha,
-      // Mercado Pago todavía no está integrado: no hay forma de saber
-      // cuánto se cobró en señas, así que va en null a propósito.
-      resumen: { reservas, senias_cobradas: null, libres },
+      resumen: { reservas, senias_cobradas: seniasCobradas, libres },
       canchas,
+      reembolsos_pendientes: reembolsosPendientes,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+// -----------------------------------------------------------------
+// Reembolsos pendientes
+// -----------------------------------------------------------------
+// Pagos que llegaron cuando el turno ya era de otro y que no se
+// pudieron devolver solos. La reserva está cancelada (no aparece en la
+// grilla), así que la agenda los trae aparte, de cualquier fecha, para
+// que el dueño los vea apenas entra.
+const SQL_REEMBOLSOS_PENDIENTES = `
+  SELECT r.id AS reserva_id, r.cliente_nombre, r.cliente_tel, r.mp_order_id,
+         CASE WHEN r.tipo_pago = 'senia' THEN r.monto_senia ELSE r.monto_total END AS monto,
+         c.nombre AS cancha_nombre,
+         to_char(lower(r.horario) AT TIME ZONE cl.zona_horaria, 'YYYY-MM-DD') AS fecha,
+         to_char(lower(r.horario) AT TIME ZONE cl.zona_horaria, 'HH24:MI') AS hora
+  FROM reservas r
+  JOIN canchas c ON c.id = r.cancha_id
+  JOIN clubes cl ON cl.id = c.club_id
+  WHERE c.club_id = $1 AND r.pago_estado = 'reembolso_pendiente'
+  ORDER BY r.id
+`;
+
+// Vuelve a intentar la devolución (o detecta que el dueño ya la hizo a
+// mano desde Mercado Pago). Es la misma verificarPago de siempre.
+router.post('/reservas/:id/reintentar-reembolso', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Id inválido' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.id FROM reservas r
+       JOIN canchas c ON c.id = r.cancha_id
+       WHERE r.id = $1 AND c.club_id = $2 AND r.pago_estado = 'reembolso_pendiente'`,
+      [id, req.admin.clubId]
+    );
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'No encontramos ese reembolso pendiente' });
+    }
+
+    await verificarPago(id);
+    const { rows: despues } = await pool.query('SELECT pago_estado FROM reservas WHERE id = $1', [id]);
+    if (despues[0].pago_estado !== 'reembolsado') {
+      return res.status(502).json({
+        error: 'Mercado Pago no aceptó la devolución. Probá más tarde o hacela desde tu cuenta de Mercado Pago.',
+      });
+    }
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error interno' });
