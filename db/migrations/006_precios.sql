@@ -1,6 +1,4 @@
--- Precios y forma de pago (seña o total). Mercado Pago todavía no está
--- integrado: estas columnas dejan la plata calculada y guardada, listas
--- para cuando se conecte el cobro de verdad.
+-- Precios, porcentaje de seña y montos de cada reserva
 
 ALTER TABLE clubes
   ADD COLUMN senia_porcentaje int NOT NULL DEFAULT 50,
@@ -14,10 +12,6 @@ UPDATE canchas SET precio = 20000 WHERE club_id = 1;
 ALTER TABLE reservas
   ADD COLUMN monto_total  int,
   ADD COLUMN monto_senia  int,
-  -- NULL para reservas manuales, bloqueos y turnos fijos: ninguno de
-  -- esos pasa por la elección de seña/total del jugador. El CHECK no
-  -- necesita "OR tipo_pago IS NULL" aparte: en SQL, NULL IN (...) da
-  -- NULL, y un CHECK solo rechaza cuando da false, así que un NULL ya
-  -- pasa solo.
+  -- NULL en reservas que no son online
   ADD COLUMN tipo_pago    text CHECK (tipo_pago IN ('senia', 'total')),
   ADD COLUMN monto_pagado int NOT NULL DEFAULT 0;

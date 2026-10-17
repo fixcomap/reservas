@@ -4,13 +4,7 @@ const { conLockDeCancha, condicionTurnoFijo } = require('./turnos');
 const { obtenerOrden, reembolsarOrden, aCentavos, ErrorMP } = require('./mercadopago');
 const { enviarConfirmacion } = require('./mail');
 
-// ---------------------------------------------------------------------
-// Link secreto de la reserva
-// ---------------------------------------------------------------------
-// El jugador recibe un token aleatorio (32 bytes en base64url, 43
-// caracteres) una sola vez, al reservar. En la base queda solo su hash:
-// el token es la "llave" para ver la reserva desde rutas públicas, en
-// vez del id numérico, que cualquiera podría ir probando (1, 2, 3...).
+// Link secreto de la reserva: en la base se guarda solo el hash
 function generarToken() {
   return crypto.randomBytes(32).toString('base64url');
 }
@@ -21,18 +15,11 @@ function hashToken(token) {
 
 const RE_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
-// Lo que se cobra por Mercado Pago: la seña o el total, según lo que
-// eligió el jugador. Los dos montos los calculó el servidor al reservar
-// y quedaron guardados en la fila.
+// Monto que se cobra: seña o total
 const SQL_MONTO_A_PAGAR = `CASE WHEN r.tipo_pago = 'senia' THEN r.monto_senia ELSE r.monto_total END`;
 
-// ---------------------------------------------------------------------
-// Qué dice la orden de Mercado Pago
-// ---------------------------------------------------------------------
-// Estados de una orden de Checkout Pro (ver "Order status" en la
-// documentación): created, processing, processed, action_required,
-// failed, canceled, refunded. "processed" + "accredited" es la única
-// combinación que significa "la plata está acreditada".
+// Estados de la orden: created, processing, processed, action_required,
+// failed, canceled, refunded. Pagada = processed + accredited.
 function esReembolsada(orden) {
   return orden.status === 'refunded' || ['refunded', 'partially_refunded'].includes(orden.status_detail);
 }
@@ -44,8 +31,7 @@ function leerOrden(orden) {
   return 'pendiente'; // created, processing, action_required...
 }
 
-// Lo cobrado según la orden: total_paid_amount si viene; si no, la suma
-// de los pagos procesados.
+// Lo cobrado, en centavos
 function montoCobrado(orden) {
   const total = aCentavos(orden.total_paid_amount);
   if (total != null) return total;
@@ -55,8 +41,7 @@ function montoCobrado(orden) {
     .reduce((suma, p) => suma + (aCentavos(p.paid_amount ?? p.amount) || 0), 0);
 }
 
-// La orden corresponde a ESTA reserva y cobró exactamente lo que había
-// que cobrar, en pesos. Si algo no coincide, no se confirma nada.
+// Misma reserva, monto exacto y en ARS
 function ordenCoincide(orden, reserva) {
   const esperado = Number(reserva.monto_a_pagar) * 100;
   return (
@@ -67,15 +52,9 @@ function ordenCoincide(orden, reserva) {
   );
 }
 
-// ---------------------------------------------------------------------
-// ¿Se puede confirmar este turno ahora?
-// ---------------------------------------------------------------------
-// Se llama con el lock de la cancha tomado. Si la retención sigue
-// vigente, el turno es de esta reserva (la exclusion constraint no deja
-// que otra se superponga). Si venció, otro pudo haberlo tomado mientras
-// tanto: otra reserva activa, o un turno fijo creado después.
+// ¿El turno sigue libre para esta reserva? (con el lock de la cancha tomado)
 async function turnoDisponiblePara(client, reserva) {
-  if (new Date(reserva.inicio) < new Date()) return false; // ya empezó: no tiene sentido confirmarlo
+  if (new Date(reserva.inicio) < new Date()) return false; // ya empezó
   if (reserva.estado === 'retenida' && new Date(reserva.vence_en) > new Date()) return true;
 
   const { rows } = await client.query(
@@ -106,14 +85,7 @@ async function turnoDisponiblePara(client, reserva) {
   return !fijo[0].es_fijo;
 }
 
-// ---------------------------------------------------------------------
-// Reembolso
-// ---------------------------------------------------------------------
-// La reserva ya quedó marcada 'reembolso_pendiente' ANTES de llamar acá
-// (adentro de la transacción): si la API se cae a mitad de camino, el
-// dueño la ve igual en el panel. Primero se mira la orden por si ya
-// estaba reembolsada (un intento anterior, o el dueño lo hizo a mano
-// desde Mercado Pago) para no pedir dos veces lo mismo.
+// Reembolso total. Si falla, la reserva queda en 'reembolso_pendiente'.
 async function intentarReembolso(reservaId, ordenId) {
   try {
     const orden = await obtenerOrden(ordenId);
@@ -121,7 +93,6 @@ async function intentarReembolso(reservaId, ordenId) {
       try {
         await reembolsarOrden(ordenId);
       } catch (err) {
-        // Otra llamada en paralelo ya lo devolvió: está bien igual.
         if (!(err instanceof ErrorMP && err.codigo === 'order_already_refunded')) throw err;
       }
     }
@@ -131,20 +102,12 @@ async function intentarReembolso(reservaId, ordenId) {
       [reservaId]
     );
   } catch (err) {
-    // Queda 'reembolso_pendiente' para que el dueño lo vea en el panel.
     console.error(`Reembolso de la reserva ${reservaId} falló: ${err.message}`);
   }
 }
 
-// ---------------------------------------------------------------------
-// verificarPago: la única función que decide si una reserva está paga
-// ---------------------------------------------------------------------
-// La llaman la vuelta del jugador (GET /reservas/estado/:token), el
-// webhook y el panel. Nunca recibe "cómo salió el pago" de afuera:
-// siempre le pregunta a Mercado Pago por la orden guardada en la
-// reserva. Es idempotente: si ya está aprobada o reembolsada, no hace
-// nada; si dos llamadas llegan juntas, el lock por cancha las pone en
-// fila y la segunda ve lo que dejó la primera.
+// Decide el estado del pago consultando la orden a Mercado Pago.
+// La usan la vuelta del jugador, el webhook y el panel. Es idempotente.
 async function verificarPago(reservaId) {
   const { rows } = await pool.query(
     `SELECT id, cancha_id, mp_order_id, pago_estado FROM reservas WHERE id = $1 AND origen = 'online'`,
@@ -158,17 +121,12 @@ async function verificarPago(reservaId) {
     return;
   }
 
-  // Afuera del lock: es un pedido HTTP y no queremos frenar otras
-  // reservas de la cancha mientras esperamos a Mercado Pago.
   const orden = await obtenerOrden(inicial.mp_order_id);
   const resultado = leerOrden(orden);
 
   if (resultado === 'pendiente') return;
 
   if (resultado === 'rechazada') {
-    // No se cancela la reserva: con Checkout Pro el jugador puede
-    // reintentar con otro medio, y si al final paga, la próxima
-    // verificación la confirma. Si no, vence sola como cualquier retenida.
     await pool.query(`UPDATE reservas SET pago_estado = 'rechazado' WHERE id = $1 AND pago_estado = 'pendiente'`, [
       inicial.id,
     ]);
@@ -176,7 +134,6 @@ async function verificarPago(reservaId) {
   }
 
   if (resultado === 'reembolsada') {
-    // Alguien la reembolsó desde Mercado Pago antes de que la viéramos.
     await pool.query(
       `UPDATE reservas
        SET pago_estado = 'reembolsado',
@@ -199,7 +156,6 @@ async function verificarPago(reservaId) {
     );
     const reserva = filas[0];
 
-    // Otra llamada ya lo resolvió mientras esperábamos el lock.
     if (reserva.pago_estado === 'aprobado' || reserva.pago_estado === 'reembolsado') return 'nada';
     if (reserva.pago_estado === 'reembolso_pendiente') return 'reembolsar';
 
@@ -214,8 +170,6 @@ async function verificarPago(reservaId) {
     };
 
     if (!ordenCoincide(orden, reserva)) {
-      // No debería pasar nunca (la orden la armó el servidor con este
-      // monto), pero si pasa no se confirma: se devuelve la plata.
       console.error(`La orden de la reserva ${reserva.id} no coincide en monto, moneda o referencia`);
       return pedirReembolso();
     }
@@ -224,8 +178,6 @@ async function verificarPago(reservaId) {
       return pedirReembolso();
     }
 
-    // La exclusion constraint es la red de seguridad: si igual chocara
-    // con otra reserva, se trata como turno ocupado.
     await client.query('SAVEPOINT confirmar');
     try {
       await client.query(
@@ -247,8 +199,6 @@ async function verificarPago(reservaId) {
     await intentarReembolso(inicial.id, inicial.mp_order_id);
   }
   if (decision === 'confirmada') {
-    // Sin await: el mail no tiene por qué demorar la respuesta, y
-    // enviarConfirmacion nunca tira error (ver mail.js).
     enviarConfirmacion(inicial.id);
   }
 }

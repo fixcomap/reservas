@@ -1,13 +1,8 @@
 const nodemailer = require('nodemailer');
 const pool = require('./db');
 
-// Mails al jugador, por SMTP. En desarrollo apuntá SMTP_HOST/SMTP_PORT a
-// Mailpit (docker compose up -d mailpit): los mails no salen a internet
-// y se ven en http://localhost:8025. En producción se cambian solo las
-// variables SMTP_* por las del proveedor (Gmail, Brevo, Resend...).
-// Si SMTP_HOST está vacío no se manda nada: la reserva funciona igual.
-//
-// Las credenciales SMTP se leen de process.env y no se loguean nunca.
+// Mails al jugador por SMTP. En desarrollo: Mailpit (http://localhost:8025).
+// Sin SMTP_HOST no se manda nada.
 
 let transporte = null;
 function obtenerTransporte() {
@@ -16,7 +11,6 @@ function obtenerTransporte() {
     transporte = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
-      // true solo para el puerto 465 (TLS directo); en 587 y 1025 no.
       secure: process.env.SMTP_SECURE === 'true',
       auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
       connectionTimeout: 10000,
@@ -27,9 +21,6 @@ function obtenerTransporte() {
   return transporte;
 }
 
-// Lo que escribe el jugador (nombre) o el dueño (nombre del club,
-// dirección) va adentro de un HTML: se escapa para que no pueda meter
-// etiquetas ni links en el mail.
 function escaparHtml(texto) {
   return String(texto ?? '').replace(
     /[&<>"']/g,
@@ -121,16 +112,7 @@ function armarMail(r) {
   return { asunto, texto, html };
 }
 
-// Manda el mail de "turno confirmado" una sola vez por reserva.
-//
-// El UPDATE ... WHERE mail_confirmacion_enviado_en IS NULL es la
-// "reserva" del envío: si dos llamadas llegan juntas (el webhook y la
-// vuelta del jugador, por ejemplo), solo una consigue pasarlo de NULL a
-// una fecha, y solo esa manda el mail. Si el envío falla, se vuelve a
-// NULL para que la próxima llamada lo reintente.
-//
-// Nunca tira error: un mail que no sale no tiene que romper la
-// confirmación del turno.
+// Manda el mail de turno confirmado una sola vez. Nunca tira error.
 async function enviarConfirmacion(reservaId) {
   const smtp = obtenerTransporte();
   if (!smtp) return;
@@ -157,7 +139,7 @@ async function enviarConfirmacion(reservaId) {
     console.error(`Mail de la reserva ${reservaId}: ${err.message}`);
     return;
   }
-  if (!reserva) return; // ya se mandó, o todavía no corresponde
+  if (!reserva) return;
 
   try {
     const { asunto, texto, html } = armarMail(reserva);

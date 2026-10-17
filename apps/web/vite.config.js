@@ -1,9 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// El front corre en 5173 y la API en 3000. Sin proxy el navegador
-// bloquearía los pedidos por CORS, así que todo lo que empiece con /api
-// se reenvía a la API sacándole ese prefijo: /api/disponibilidad -> /disponibilidad
+// Front en 5173. /api/* se reenvía a la API (puerto 3000) sin el prefijo.
 export default defineConfig({
   plugins: [react()],
   server: {

@@ -53,10 +53,7 @@ export default function TurnosFijos() {
 
   useEffect(cargar, []);
 
-  // Al cambiar el día, proponemos de nuevo la fecha de inicio: la
-  // próxima vez que cae ese día. Si el admin ya la había tocado a mano,
-  // esto se la pisa, pero es la lectura más simple de "por defecto, la
-  // próxima fecha de ese día de la semana".
+  // Al cambiar el día, propone la próxima fecha de ese día
   function cambiarDia(valor) {
     setDiaSemana(valor);
     setFechaDesde(proximaFecha(Number(valor)));

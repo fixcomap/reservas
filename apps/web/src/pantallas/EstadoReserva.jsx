@@ -4,11 +4,8 @@ import { formatearMonto } from '../precios.js';
 import { tituloCorto, horaArgentina } from '../fechas.js';
 import { IconoCalendario, IconoCompartir, IconoTilde, IconoReloj, IconoCruz } from '../componentes/Iconos.jsx';
 
-// Pantalla 3: /reserva/<token>, adonde vuelve el jugador desde Mercado
-// Pago. Todo lo que se muestra sale de la API, que le pregunta a
-// Mercado Pago por el pago: los parámetros que Mercado Pago agrega a
-// la URL de vuelta (?status=approved...) no se leen nunca, porque
-// cualquiera los puede escribir a mano.
+// Pantalla 3 (/reserva/<token>): estado de la reserva y del pago.
+// Nunca se leen los parámetros de la URL de vuelta (?status=...).
 
 // Qué cabecera mostrar según cómo esté la reserva.
 function cabecera(r) {
@@ -190,8 +187,7 @@ export default function EstadoReserva({ token }) {
 
         {confirmada && (
           <>
-            {/* TODO: estas tres acciones todavía no están implementadas.
-                Quedan visibles y deshabilitadas para mostrar a dónde va el flujo. */}
+            {/* TODO: estas tres acciones todavía no están implementadas */}
             <button type="button" className="boton-accion" disabled>
               <IconoCalendario />
               Agregar al calendario

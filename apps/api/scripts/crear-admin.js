@@ -1,10 +1,5 @@
-// Crea un administrador para el club 1. Se corre a mano desde la
-// terminal (npm run crear-admin), nunca recibe el email o la
-// contraseña como argumento de la línea de comandos: en PowerShell
-// (y en cualquier shell) lo que se pasa como argumento queda guardado
-// en el historial de comandos, y una contraseña ahí es un secreto
-// filtrado. Por eso todo se pide por consola, con la contraseña oculta
-// mientras se tipea.
+// Crea un administrador para el club 1: npm run crear-admin
+// (pide email y contraseña por consola, no por argumentos)
 
 const readline = require('readline');
 const pool = require('../src/db');
@@ -24,16 +19,11 @@ function preguntar(texto) {
   });
 }
 
-// Lee una línea de stdin sin mostrar lo que se tipea. No hay forma
-// estándar de hacer esto con readline solo, así que leemos el stdin en
-// "modo crudo" nosotros mismos: cada tecla llega como un dato suelto,
-// la vamos juntando en un buffer, y nunca la reflejamos en pantalla.
+// Lee una línea sin mostrar lo que se tipea
 function preguntarOculto(texto) {
   return new Promise((resolve, reject) => {
     const stdin = process.stdin;
     if (!stdin.isTTY) {
-      // No hay terminal interactiva (por ejemplo, corriendo en un
-      // script automatizado): no podemos ocultar nada de forma segura.
       reject(new Error('Este script necesita correrse en una terminal interactiva.'));
       return;
     }

@@ -1,5 +1,4 @@
-// Íconos propios del panel, dibujados a mano en SVG (mismo criterio que
-// src/componentes/Iconos.jsx: nada de librerías de íconos).
+// Íconos SVG del panel.
 
 const base = {
   fill: 'none',

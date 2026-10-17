@@ -1,12 +1,7 @@
 const crypto = require('crypto');
 
-// Único lugar de la API que habla con Mercado Pago (Checkout Pro vía la
-// API de Órdenes: https://api.mercadopago.com/v1/orders).
-//
-// El access token se lee de process.env y solo viaja en el header
-// Authorization hacia Mercado Pago: nunca se loguea, nunca se devuelve
-// al front. Si algo falla, los errores que se loguean llevan el status
-// HTTP y el código de error de Mercado Pago, nada más.
+// Cliente de la API de Órdenes de Mercado Pago (Checkout Pro).
+// El access token nunca se loguea ni se manda al front.
 
 const BASE = 'https://api.mercadopago.com';
 const TIMEOUT_MS = 15000;
@@ -47,7 +42,6 @@ async function pedir(metodo, ruta, { cuerpo, idempotencia } = {}) {
 
   const datos = await respuesta.json().catch(() => null);
   if (!respuesta.ok) {
-    // La API de Órdenes devuelve { errors: [{ code, message }] }.
     const primero = datos?.errors?.[0];
     const codigo = primero?.code || datos?.error || 'desconocido';
     throw new ErrorMP(
@@ -59,14 +53,12 @@ async function pedir(metodo, ruta, { cuerpo, idempotencia } = {}) {
   return datos;
 }
 
-// Montos: en la base son pesos enteros; Mercado Pago los quiere como
-// texto con dos decimales ("20000.00") y los devuelve igual.
+// 20000 -> "20000.00"
 function aTextoMP(pesos) {
   return Number(pesos).toFixed(2);
 }
 
-// "20000.00" -> 2000000 (centavos), para comparar sin errores de coma
-// flotante. null si no es un número.
+// "20000.00" -> 2000000 (centavos)
 function aCentavos(valor) {
   if (valor == null || valor === '') return null;
   const n = Number(valor);
@@ -74,9 +66,7 @@ function aCentavos(valor) {
   return Math.round(n * 100);
 }
 
-// Crea la orden de Checkout Pro y devuelve { id, checkout_url }.
-// `idempotencia` tiene que ser la misma si se reintenta el mismo pedido:
-// así Mercado Pago no crea dos órdenes para una misma reserva.
+// Crea la orden y devuelve { id, checkout_url }
 async function crearOrden({ reservaId, monto, titulo, urlRetorno, venceEnMinutos, idempotencia }) {
   const precio = aTextoMP(monto);
   const cuerpo = {
@@ -84,7 +74,6 @@ async function crearOrden({ reservaId, monto, titulo, urlRetorno, venceEnMinutos
     processing_mode: 'manual',
     total_amount: precio,
     external_reference: String(reservaId),
-    // Duración ISO 8601, igual a la retención del turno.
     expiration_time: `PT${venceEnMinutos}M`,
     description: titulo,
     items: [{ title: titulo, unit_price: precio, quantity: 1 }],
@@ -102,9 +91,7 @@ async function crearOrden({ reservaId, monto, titulo, urlRetorno, venceEnMinutos
   try {
     orden = await pedir('POST', '/v1/orders', { cuerpo, idempotencia });
   } catch (err) {
-    // Un solo reintento, con la MISMA clave, si no hubo respuesta o fue
-    // un error de su lado: si la primera sí llegó a crear la orden,
-    // Mercado Pago no crea otra.
+    // Un reintento con la misma clave de idempotencia
     if (err instanceof ErrorMP && (err.status === 0 || err.status >= 500)) {
       orden = await pedir('POST', '/v1/orders', { cuerpo, idempotencia });
     } else {
@@ -122,7 +109,7 @@ function obtenerOrden(ordenId) {
   return pedir('GET', `/v1/orders/${encodeURIComponent(ordenId)}`);
 }
 
-// Reembolso total (cuerpo vacío = devolver todo lo cobrado).
+// Reembolso total
 function reembolsarOrden(ordenId) {
   return pedir('POST', `/v1/orders/${encodeURIComponent(ordenId)}/refund`, {
     idempotencia: crypto.randomUUID(),

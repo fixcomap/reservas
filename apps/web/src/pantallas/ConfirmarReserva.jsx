@@ -4,8 +4,7 @@ import { formatearPrecio, formatearMonto } from '../precios.js';
 import { tituloLargo, sumarMinutos } from '../fechas.js';
 import { IconoCalendario, IconoFlechaAtras } from '../componentes/Iconos.jsx';
 
-// Mismas reglas que valida la API, repetidas acá para avisar al toque
-// sin esperar el viaje de ida y vuelta.
+// Mismas reglas que valida la API
 const TELEFONO_OK = /^\+?[\d\s-]{8,20}$/;
 const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -36,10 +35,7 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
     }
   }
 
-  // Esto es solo para mostrar algo antes de reservar: el monto que
-  // vale de verdad es el que devuelve la API al confirmar (ver
-  // EstadoReserva), calculado del lado del servidor con el precio y
-  // el porcentaje que estén guardados en ese momento.
+  // Solo para mostrar; el monto real lo calcula el servidor
   const total = Number(cancha.precio) || 0;
   const senia = Math.round((total * seniaPorcentaje) / 100);
   const resto = total - senia;
@@ -61,15 +57,9 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
         </div>
 
         <div className="contenido">
-          {/* TODO: aviso naranja "Te guardamos el turno 15:00 min
-              mientras pagás". Hoy no se muestra porque el turno recién
-              se retiene al tocar el botón de pagar, justo antes de ir a
-              Mercado Pago. */}
+          {/* TODO: aviso "Te guardamos el turno 15:00 min mientras pagás" */}
 
-          {/* .p2-layout/.p2-principal/.p2-lateral: en celular y tablet
-              son transparentes (display: contents, ver estilos.css),
-              así que las dos section.tarjeta quedan en el mismo orden
-              de siempre. Desde 1024px arman dos columnas. */}
+          {/* Dos columnas desde 1024px */}
           <div className="p2-layout">
             <div className="p2-principal">
               <section className="tarjeta">
@@ -226,8 +216,7 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
                 Cancelando con más de [X] horas de anticipación te devolvemos la seña.
               </p>
 
-              {/* Mismo form, mismo envío: en celular y tablet este botón
-                  no se ve (la barra fija de abajo hace lo mismo). */}
+              {/* Solo escritorio (en celular está la barra fija) */}
               <button
                 type="submit"
                 form="form-datos"
@@ -247,7 +236,6 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
             <span>{tipoPago === 'senia' ? 'Seña a pagar ahora' : 'Total a pagar ahora'}</span>
             <strong>{formatearPrecio(aPagarAhora)}</strong>
           </div>
-          {/* Retiene el turno 15 minutos y lleva al checkout de Mercado Pago. */}
           <button type="submit" form="form-datos" className="boton boton-azul" disabled={enviando}>
             {textoBoton}
           </button>

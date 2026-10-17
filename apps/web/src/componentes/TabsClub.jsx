@@ -1,10 +1,6 @@
 import { useRef } from 'react';
 
-// Pestañas "Reservas" / "Detalles del club" para celular y tablet
-// (desde 1024px, estilos.css las oculta: ahí las dos secciones van
-// una debajo de la otra sin pestañas). Patrón de teclado estándar de
-// WAI-ARIA para tabs con activación automática: las flechas mueven el
-// foco Y cambian la pestaña activa al mismo tiempo.
+// Pestañas "Reservas" / "Detalles del club" (solo celular y tablet)
 const PESTANIAS = [
   { id: 'reservas', etiqueta: 'Reservas' },
   { id: 'detalles', etiqueta: 'Detalles del club' },
@@ -52,9 +48,6 @@ export default function TabsClub({ seccion, onCambiar }) {
             onClick={() => onCambiar(p.id)}
             onKeyDown={(e) => alPresionarTecla(e, indice)}
           >
-            {/* Span propio para que la línea de la pestaña activa (ver
-                estilos.css) mida el ancho del texto, no el de la mitad
-                de pantalla que ocupa el botón. */}
             <span className="tab-club-texto">{p.etiqueta}</span>
           </button>
         );

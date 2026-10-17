@@ -10,27 +10,13 @@ import TabsClub from '../componentes/TabsClub.jsx';
 import { Cargando, ErrorRed, SinTurnos } from '../componentes/Estados.jsx';
 import { tituloCorto } from '../fechas.js';
 
-// En celular y tablet (menos de 1024px) la pantalla 1 tiene dos
-// pestañas: "Reservas" (lo de siempre) y "Detalles del club" (mapa,
-// horarios, servicios, contacto). Arranca en "reservas", salvo que la
-// URL traiga ?seccion=detalles (para que el club comparta un link
-// directo a sus detalles, por ejemplo en Instagram). Desde 1024px las
-// pestañas se ocultan (estilos.css) y las dos secciones se ven siempre,
-// una debajo de la otra.
+// Pestaña inicial en celular (?seccion=detalles abre los detalles del club)
 function seccionInicial() {
   const parametros = new URLSearchParams(window.location.search);
   return parametros.get('seccion') === 'detalles' ? 'detalles' : 'reservas';
 }
 
 // Pantalla 1: elegir día, horario y cancha.
-//
-// .p1-layout / .p1-principal son contenedores nuevos para el layout de
-// escritorio (ver estilos.css): en celular y tablet no generan caja
-// propia (display: contents), así que SelectorDia/GrillaHorarios/
-// ListaCanchas quedan como hijos directos de .panel-reservas, igual
-// que antes quedaban como hijos de .contenido. Recién desde 1024px se
-// arma la grilla de dos columnas y aparece <TuReserva>, que ahí
-// reemplaza a la barra fija de abajo.
 export default function ElegirTurno({
   club,
   dias,
@@ -49,9 +35,6 @@ export default function ElegirTurno({
   onReintentar,
   onContinuar,
 }) {
-  // Vive acá (no en App.jsx) porque es puramente de esta pantalla: lo
-  // que el jugador ya eligió (día/hora/cancha) sigue en el estado de
-  // App.jsx sin tocarse, así que cambiar de pestaña nunca lo pierde.
   const [seccion, setSeccion] = useState(seccionInicial);
 
   return (
@@ -112,8 +95,6 @@ export default function ElegirTurno({
         <InfoClub club={club} seccion={seccion} />
       </div>
 
-      {/* La barra fija con "Continuar" es parte del flujo de reserva:
-          en celular/tablet solo tiene sentido en la pestaña Reservas. */}
       {seccion === 'reservas' && (
         <BarraInferior
           resumen={hora ? `${tituloCorto(fecha)} · ${hora}` : tituloCorto(fecha)}

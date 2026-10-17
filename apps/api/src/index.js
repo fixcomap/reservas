@@ -22,16 +22,14 @@ app.use(cookieParser());
 const PORT = process.env.API_PORT || 3000;
 const CLUB_ID = Number(process.env.CLUB_ID || 1);
 
-// Adónde vuelve el jugador después de pagar: /reserva/<token> del front.
+// Adónde vuelve el jugador después de pagar
 const FRONT_URL = (process.env.FRONT_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Lo que dura la retención de una reserva online mientras se paga.
 const MINUTOS_RETENCION = 15;
 
-// "Seña turno Cancha 1 · Vie 16 oct 10:30": lo que ve el jugador en el
-// checkout de Mercado Pago y en su resumen de la tarjeta.
+// "Seña turno Cancha 1 · Vie 16 oct 10:30"
 function tituloOrden(tipoPago, canchaNombre, inicio, zonaHoraria) {
   const partes = Object.fromEntries(
     new Intl.DateTimeFormat('es-AR', {
@@ -51,7 +49,7 @@ function tituloOrden(tipoPago, canchaNombre, inicio, zonaHoraria) {
   return `${prefijo} ${canchaNombre} · ${dia} ${partes.day} ${partes.month} ${partes.hour}:${partes.minute}`;
 }
 
-// Para chequear rápido que la API ve la base
+// Chequeo de que la API ve la base
 app.get('/salud', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -96,16 +94,11 @@ app.get('/disponibilidad', async (req, res) => {
   }
 
   try {
-    // Consulta aparte (por clave primaria, prácticamente gratis) en vez
-    // de sacar el porcentaje de la primera fila de SQL_DISPONIBILIDAD:
-    // así sigue viniendo aunque ese día el club esté cerrado y la
-    // consulta principal no devuelva ninguna fila.
     const [{ rows }, { rows: clubRows }] = await Promise.all([
       pool.query(SQL_DISPONIBILIDAD, [fecha, CLUB_ID]),
       pool.query('SELECT senia_porcentaje FROM clubes WHERE id = $1', [CLUB_ID]),
     ]);
 
-    // Agrupar los turnos por cancha
     const canchas = [];
     const porId = new Map();
     for (const r of rows) {
@@ -130,9 +123,7 @@ app.get('/disponibilidad', async (req, res) => {
   }
 });
 
-// Datos públicos del club para la pantalla 1 (cabecera, "Dónde
-// estamos", contacto, pie de página). Nada que no deba verse sin
-// loguearse: ni emails de admin, ni nada de reservas.
+// Datos públicos del club
 app.get('/club', async (req, res) => {
   try {
     const [{ rows: clubRows }, { rows: horarioRows }] = await Promise.all([
@@ -168,14 +159,9 @@ app.get('/club', async (req, res) => {
 });
 
 app.post('/reservas', async (req, res) => {
-  // Fijate que acá nunca se lee cliente_body.monto_total ni nada
-  // parecido: aunque el body traiga montos inventados, ni siquiera se
-  // desestructuran, así que no hay forma de que lleguen a usarse. Los
-  // montos los calcula el servidor más abajo, con el precio y el
-  // porcentaje que están guardados en la base en este momento.
+  // Los montos nunca vienen del body: los calcula el servidor
   const { cancha_id, fecha, hora, cliente_nombre, cliente_tel, cliente_email, tipo_pago } = req.body || {};
 
-  // 1. Validar lo que llega: nunca confiar en el cliente
   if (!Number.isInteger(cancha_id)) {
     return res.status(400).json({ error: 'cancha_id inválido' });
   }
@@ -193,8 +179,6 @@ app.post('/reservas', async (req, res) => {
   if (!/^\+?[\d\s-]{8,20}$/.test(tel)) {
     return res.status(400).json({ error: 'Teléfono inválido' });
   }
-  // Sin espacios ni saltos de línea (\s): además de no ser un mail
-  // válido, un salto de línea acá podría colar headers en el mail.
   const email = String(cliente_email || '').trim().toLowerCase();
   if (email.length > 254 || !RE_EMAIL.test(email)) {
     return res.status(400).json({ error: 'Email inválido' });
@@ -209,12 +193,7 @@ app.post('/reservas', async (req, res) => {
   try {
     await liberarVencidas();
 
-    // El lock por cancha evita que esta reserva y, por ejemplo, un
-    // turno fijo que el dueño está creando en simultáneo lean los dos
-    // "libre" antes de que ninguno haya insertado nada (ver conLockDeCancha
-    // en turnos.js para la explicación completa).
     const resultado = await conLockDeCancha(cancha_id, async (client) => {
-      // 2. Verificar que el turno exista y se pueda reservar
       const turno = await buscarTurno(fecha, cancha_id, CLUB_ID, hora, client);
       if (!turno) {
         throw new ErrorTurno('Ese turno no existe', 400);
@@ -226,17 +205,10 @@ app.post('/reservas', async (req, res) => {
         throw new ErrorTurno('Ese turno ya está tomado', 409);
       }
 
-      // Los montos salen del precio de la cancha y el porcentaje de
-      // seña del club tal como están en la base ahora mismo, nunca del
-      // body del pedido. Quedan guardados en la fila: si el dueño
-      // cambia el precio mañana, esta reserva conserva lo que costaba
-      // cuando se hizo.
       const montoTotal = turno.precio;
       const montoSenia = calcularSenia(turno.precio, turno.seniaPorcentaje);
       const montoAPagar = tipo_pago === 'senia' ? montoSenia : montoTotal;
 
-      // 3. Crear la reserva retenida mientras el jugador paga, con el
-      // hash de su link secreto (el token en sí no se guarda).
       const insert = await client.query(
         `INSERT INTO reservas
            (cancha_id, horario, estado, origen, cliente_nombre, cliente_tel, vence_en,
@@ -257,9 +229,7 @@ app.post('/reservas', async (req, res) => {
       };
     });
 
-    // 4. Crear la orden de Mercado Pago, ya afuera de la transacción
-    // (es un pedido HTTP: no tiene sentido tener la cancha bloqueada
-    // mientras tanto; la reserva retenida ya cuida el turno).
+    // Orden de Mercado Pago (fuera de la transacción)
     let orden;
     try {
       orden = await crearOrden({
@@ -268,15 +238,11 @@ app.post('/reservas', async (req, res) => {
         titulo: tituloOrden(tipo_pago, resultado.cancha_nombre, resultado.inicio, resultado.zona_horaria),
         urlRetorno: `${FRONT_URL}/reserva/${token}`,
         venceEnMinutos: MINUTOS_RETENCION,
-        // Misma clave para el mismo pedido: si crearOrden reintenta, no
-        // se crean dos órdenes. El pedazo del hash la hace única aunque
-        // se reinicie la base y los ids vuelvan a empezar.
         idempotencia: `reserva-${resultado.id}-${tokenHash.slice(0, 16)}`,
       });
       await pool.query('UPDATE reservas SET mp_order_id = $2 WHERE id = $1', [resultado.id, orden.id]);
     } catch (err) {
       console.error(`No se pudo crear la orden de Mercado Pago para la reserva ${resultado.id}: ${err.message}`);
-      // Sin orden no hay forma de pagar: se suelta el turno.
       await pool
         .query(`UPDATE reservas SET estado = 'cancelada' WHERE id = $1 AND estado = 'retenida'`, [resultado.id])
         .catch((e) => console.error(e));
@@ -285,8 +251,7 @@ app.post('/reservas', async (req, res) => {
       });
     }
 
-    // El token se devuelve esta única vez: es lo que le da acceso al
-    // jugador a /reserva/<token>.
+    // El token se devuelve solo esta vez
     res.status(201).json({
       token,
       checkout_url: orden.checkout_url,
@@ -300,7 +265,7 @@ app.post('/reservas', async (req, res) => {
     if (err instanceof ErrorTurno) {
       return res.status(err.status).json({ error: err.message, ...(err.detalle || {}) });
     }
-    // 23P01 = la regla anti doble reserva de Postgres rechazó el insert
+    // 23P01 = turno superpuesto (exclusion constraint)
     if (err.code === '23P01') {
       return res.status(409).json({ error: 'Ese turno ya está tomado' });
     }
@@ -309,8 +274,7 @@ app.post('/reservas', async (req, res) => {
   }
 });
 
-// Cada consulta de estado le pregunta a Mercado Pago por la orden, así
-// que se limita para que nadie la use para martillar su API desde acá.
+// Cada consulta va a Mercado Pago: 30 por minuto por IP
 const limitadorEstado = rateLimit({
   windowMs: 60 * 1000,
   limit: 30,
@@ -333,9 +297,7 @@ const SQL_ESTADO_RESERVA = `
   WHERE r.token_hash = $1 AND r.origen = 'online'
 `;
 
-// Estado de UNA reserva, para la vuelta del pago (/reserva/<token>). Se
-// llega solo con el token secreto, nunca con el id. No devuelve el
-// teléfono ni el nombre: quien tenga el link ve el turno y el pago, nada más.
+// Estado de una reserva por su token (vuelta del pago). Sin datos personales.
 app.get('/reservas/estado/:token', limitadorEstado, async (req, res) => {
   const { token } = req.params;
   if (!RE_TOKEN.test(token)) {
@@ -349,22 +311,18 @@ app.get('/reservas/estado/:token', limitadorEstado, async (req, res) => {
       return res.status(404).json({ error: 'No encontramos esa reserva' });
     }
 
-    // Lo que diga la URL de retorno (?status=approved...) se ignora a
-    // propósito: el estado sale de preguntarle a Mercado Pago.
+    // Nunca se usa ?status= de la URL: se le pregunta a Mercado Pago
     if (rows[0].mp_order_id && ['pendiente', 'rechazado', 'reembolso_pendiente'].includes(rows[0].pago_estado)) {
       try {
         await verificarPago(rows[0].id);
         ({ rows } = await pool.query(SQL_ESTADO_RESERVA, [tokenHash]));
       } catch (err) {
-        // Si Mercado Pago no responde, mostramos lo último que sabemos;
-        // el jugador puede tocar "Actualizar" en un rato.
         console.error(`No se pudo verificar el pago de la reserva ${rows[0].id}: ${err.message}`);
       }
     }
 
     const r = rows[0];
-    // Por si el mail falló cuando se confirmó (SMTP caído, por ejemplo):
-    // cada visita a la reserva lo reintenta. Si ya salió, no hace nada.
+    // Reintenta el mail si no salió (si ya salió, no hace nada)
     if (r.estado === 'confirmada' && r.pago_estado === 'aprobado') {
       enviarConfirmacion(r.id);
     }

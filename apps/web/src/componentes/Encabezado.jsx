@@ -1,9 +1,6 @@
 import { IconoPersona, IconoPin } from './Iconos.jsx';
 
-// Arriba la marca, debajo la foto de portada del club y, superpuesta
-// sobre el borde inferior de la foto, la tarjeta con nombre y dirección.
-// `club` llega de GET /club (App.jsx): mientras no cargó, se muestra
-// la tarjeta vacía nomás, no se inventa un nombre de relleno.
+// Marca, foto de portada y tarjeta con nombre y dirección del club.
 export default function Encabezado({ club }) {
   const direccion = [club?.direccion, club?.localidad].filter(Boolean).join(', ');
 
@@ -36,8 +33,7 @@ export default function Encabezado({ club }) {
             {direccion}
           </p>
         )}
-        {/* Nueva en escritorio: en celular/tablet no se muestra (el
-            mapa queda a un scroll de distancia nomás). */}
+        {/* Solo escritorio */}
         {club?.mapa_consulta && (
           <a className="club-link-mapa" href="#panel-detalles">
             Ver en mapa

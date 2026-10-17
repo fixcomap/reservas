@@ -1,8 +1,7 @@
 import { IconoCalendario } from '../../componentes/Iconos.jsx';
 import { IconoTurnosFijos, IconoClientes, IconoAjustes } from './IconosAdmin.jsx';
 
-// Exportada para que BarraLateralAdmin (la versión de escritorio) use
-// la misma lista: mismas pestañas, mismo orden, mismo deshabilitado.
+// También la usa BarraLateralAdmin
 export const PESTANIAS = [
   { clave: 'agenda', texto: 'Agenda', Icono: IconoCalendario, deshabilitada: false },
   { clave: 'turnos-fijos', texto: 'Turnos fijos', Icono: IconoTurnosFijos, deshabilitada: false },
@@ -10,8 +9,7 @@ export const PESTANIAS = [
   { clave: 'ajustes', texto: 'Ajustes', Icono: IconoAjustes, deshabilitada: false },
 ];
 
-// Barra fija de abajo del panel. Clientes todavía no tiene pantalla
-// propia, así que queda visible pero deshabilitada.
+// Barra de abajo del panel (celular y tablet)
 // TODO: pantalla de Clientes.
 export default function BarraInferiorAdmin({ pestania, onCambiar }) {
   return (

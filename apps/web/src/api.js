@@ -1,10 +1,8 @@
-// Único lugar del front que habla con la API.
-// Vite redirige /api a http://localhost:3000 (ver vite.config.js).
+// Llamadas a la API. Vite redirige /api a http://localhost:3000.
 
 const BASE = '/api';
 
-// Error propio para poder distinguir en las pantallas un 409
-// ("alguien te ganó el turno") de una caída de red.
+// Error con el status HTTP (0 = sin respuesta)
 export class ErrorApi extends Error {
   constructor(mensaje, estado) {
     super(mensaje);
@@ -18,7 +16,6 @@ async function pedir(ruta, opciones) {
   try {
     respuesta = await fetch(BASE + ruta, opciones);
   } catch {
-    // No hubo respuesta: la API está apagada o no hay internet.
     throw new ErrorApi('No pudimos conectarnos. Revisá tu conexión e intentá de nuevo.', 0);
   }
 
@@ -46,9 +43,6 @@ export function crearReserva(datos) {
   });
 }
 
-// Estado de una reserva por su link secreto (/reserva/<token>). La API
-// le pregunta a Mercado Pago por el pago cada vez: nunca usamos lo que
-// diga la URL de vuelta (?status=approved...).
 export function getEstadoReserva(token) {
   return pedir(`/reservas/estado/${encodeURIComponent(token)}`);
 }

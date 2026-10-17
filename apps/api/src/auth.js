@@ -2,9 +2,6 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
 
-// Costo de bcrypt: cuántas vueltas de hash le da a cada contraseña.
-// Más alto = más lento de calcular = más caro de atacar por fuerza
-// bruta si se filtra la base. 12 es el mínimo recomendado hoy en día.
 const COSTO_BCRYPT = 12;
 
 const DURACION_SESION_MS = 8 * 60 * 60 * 1000; // 8 horas
@@ -18,12 +15,7 @@ function verificarPassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-// Un hash válido (de una contraseña que nadie va a tipear nunca) para
-// comparar cuando el email no existe. Si no hiciéramos esto, un login
-// con email inexistente respondería más rápido que uno con email real
-// y contraseña incorrecta, y esa diferencia de tiempo le dice a un
-// atacante qué emails están registrados sin que haga falta otra cosa.
-// Se calcula una sola vez y se reusa.
+// Hash para comparar cuando el email no existe (mismo tiempo de respuesta)
 let hashFalsoCache = null;
 function hashFalso() {
   if (!hashFalsoCache) {
@@ -32,12 +24,7 @@ function hashFalso() {
   return hashFalsoCache;
 }
 
-// Token de sesión: 32 bytes al azar, suficiente para que adivinarlo por
-// fuerza bruta sea inviable. Se lo mandamos al navegador en la cookie,
-// pero en la base guardamos solo su hash (sha256 alcanza acá: no es una
-// contraseña de humano, ya es al azar y de 256 bits, no hace falta
-// bcrypt). Si alguien lee la tabla "sesiones" no puede armar la cookie
-// a partir de lo que ve.
+// Token de sesión: va en la cookie; en la base se guarda solo su hash
 function generarToken() {
   return crypto.randomBytes(32).toString('hex');
 }
@@ -48,12 +35,10 @@ function hashToken(token) {
 
 function opcionesCookie() {
   return {
-    httpOnly: true, // JavaScript del navegador no puede leer la cookie (protege contra XSS)
-    sameSite: 'strict', // el navegador no la manda en pedidos que vienen de otros sitios (protege contra CSRF)
+    httpOnly: true,
+    sameSite: 'strict',
     path: '/',
-    // secure exige HTTPS. En desarrollo local (http://localhost) lo
-    // dejamos apagado o el navegador directamente descarta la cookie.
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // HTTPS solo en producción
     maxAge: DURACION_SESION_MS,
   };
 }
@@ -77,9 +62,7 @@ async function destruirSesion(req, res) {
   res.clearCookie(NOMBRE_COOKIE, { path: '/' });
 }
 
-// Protege todas las rutas /admin/* salvo /admin/login. Valida la cookie
-// contra la base (tiene que existir y no estar vencida) y deja el admin
-// y su club en req.admin para que cada ruta filtre por ese club_id.
+// Middleware de /admin/*: valida la sesión y deja el admin en req.admin
 async function requireAdmin(req, res, next) {
   const token = req.cookies?.[NOMBRE_COOKIE];
   if (!token) {
@@ -97,8 +80,6 @@ async function requireAdmin(req, res, next) {
 
     const sesion = rows[0];
     if (!sesion || new Date(sesion.expira_en) < new Date()) {
-      // La cookie que mandó el navegador ya no sirve (vencida o no
-      // existe en la base): se la sacamos para que no siga insistiendo.
       res.clearCookie(NOMBRE_COOKIE, { path: '/' });
       return res.status(401).json({ error: 'Sesión inválida o vencida' });
     }

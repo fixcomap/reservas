@@ -12,14 +12,7 @@ import { IconoX, IconoChat } from './IconosAdmin.jsx';
 
 const RE_TEL = /^\+?[\d\s-]{8,20}$/;
 
-// Panel que sube desde abajo al tocar un turno de la grilla.
-// - Libre (y no liberado de un fijo): "Cargar reserva" o "Bloquear".
-// - Libre por una excepción de un fijo: lo mismo, más "Volver a ocupar
-//   con el turno fijo" (deshace la excepción).
-// - Fijo: datos del cliente, "Liberar solo esta fecha" (si no pasó) y
-//   "Desactivar turno fijo" (todas las semanas).
-// - Online / manual / bloqueo: datos del cliente y "Cancelar reserva"
-//   si todavía no pasó; si ya pasó, se puede ver pero no cancelar.
+// Panel que se abre al tocar un turno de la agenda.
 export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) {
   const esLibre = turno.estado === 'libre';
   const esFijo = turno.estado === 'fijo';
@@ -37,10 +30,7 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
   const hojaRef = useRef(null);
   const cerrarRef = useRef(null);
 
-  // Al abrir: guardamos qué tenía el foco (el turno que tocaron) para
-  // devolvérselo cuando se cierre, y movemos el foco al botón de
-  // cerrar. Esto corre en cualquier ancho: es comportamiento de
-  // teclado, no apariencia, así que celular también lo tiene.
+  // Foco al botón cerrar; al cerrar vuelve al turno tocado
   useEffect(() => {
     const disparador = document.activeElement;
     cerrarRef.current?.focus();
@@ -49,9 +39,7 @@ export default function HojaTurno({ turno, cancha, fecha, onCerrar, onCambio }) 
     };
   }, []);
 
-  // Escape cierra. Tab no deja que el foco se escape del panel
-  // (si estás en el último elemento tocable y tocás Tab, volvés al
-  // primero; con Shift+Tab, al revés).
+  // Escape cierra; Tab no sale del panel
   useEffect(() => {
     function alTecla(evento) {
       if (evento.key === 'Escape') {

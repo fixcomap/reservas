@@ -1,11 +1,7 @@
 import { tituloCorto } from '../fechas.js';
 import { formatearPrecio } from '../precios.js';
 
-// Columna derecha de la pantalla 1 en escritorio (1024px o más): el
-// mismo resumen que ya muestra la barra fija de celular, pero como
-// tarjeta sticky con el botón "Continuar" adentro. En celular y
-// tablet no se muestra — ver .p1-lateral en estilos.css — ahí sigue
-// mandando la barra fija de siempre (BarraInferior.jsx).
+// Resumen de la reserva en escritorio (en celular está BarraInferior)
 export default function TuReserva({ fecha, hora, canchaElegida, habilitado, onContinuar }) {
   return (
     <aside className="p1-lateral" aria-label="Tu reserva">

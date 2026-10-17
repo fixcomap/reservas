@@ -1,14 +1,9 @@
-// Único lugar del panel que habla con /admin/*. Mismo patrón que
-// src/api.js (el de la app del jugador): un ErrorApi con el status HTTP
-// para poder distinguir, por ejemplo, un 401 de una caída de red.
+// Llamadas a /api/admin/*
 import { ErrorApi } from '../api.js';
 
 const BASE = '/api/admin';
 
-// Cuando cualquier pedido vuelve con 401, la sesión ya no sirve (se
-// venció, o nunca hubo login). En vez de que cada pantalla se fije en
-// el status a mano, avisamos acá una sola vez y AdminApp decide volver
-// al login.
+// Avisa a AdminApp cuando un pedido vuelve con 401
 let alPerderSesion = null;
 export function escucharPerdidaDeSesion(fn) {
   alPerderSesion = fn;
@@ -30,9 +25,7 @@ async function pedir(ruta, opciones) {
   if (!respuesta.ok) {
     if (respuesta.status === 401 && alPerderSesion) alPerderSesion();
     const error = new ErrorApi(cuerpo?.error || 'Algo salió mal. Intentá de nuevo.', respuesta.status);
-    // Algunos 409 (choque de un turno fijo con reservas existentes)
-    // mandan datos extra, como la lista de conflictos. Quedan acá para
-    // que la pantalla los use si los necesita.
+    // Datos extra del error (por ejemplo, la lista de conflictos)
     error.detalle = cuerpo;
     throw error;
   }

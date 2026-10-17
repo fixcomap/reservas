@@ -18,12 +18,10 @@
   --radio: 16px;
   --sombra: 0 2px 10px rgba(16, 36, 28, 0.06);
 
-  /* Alto de la barra fija de abajo: se lo dejamos de padding al contenido
-     para que el último elemento no quede tapado. */
+  /* Alto de la barra fija de abajo */
   --alto-barra: 86px;
 
-  /* El diseño es claro. Sin esto, Chrome con modo oscuro automatico
-     invierte los colores y los inputs quedan grises. */
+  /* Evita que el modo oscuro automático invierta los colores */
   color-scheme: light;
 }
 
@@ -227,16 +225,13 @@ button:disabled {
   margin-top: 5px;
 }
 
-/* Nuevo: solo se ve desde escritorio (ver RESPONSIVE más abajo). En
-   celular la sección del mapa está a un scroll de distancia nomás. */
+/* Solo escritorio */
 .club-link-mapa {
   display: none;
 }
 
 /* ===========================================================
-   Pantalla 1 - Pestañas "Reservas" / "Detalles del club" (celular y
-   tablet, menos de 1024px; ver RESPONSIVE más abajo para cuando se
-   ocultan). Todo nuevo, ninguna clase existía antes de esta tarea.
+   Pantalla 1 - Pestañas (celular y tablet)
    =========================================================== */
 .tabs-club {
   bottom:9px;
@@ -246,8 +241,6 @@ button:disabled {
   gap: 32px;
   padding: 0 16px;
   margin-bottom: 4px;
-  /* Sombra suave en vez de una línea, para separar las pestañas del
-     contenido de abajo. */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0);
 }
 
@@ -301,27 +294,17 @@ button:disabled {
   gap: 18px;
 }
 
-/* Utilidad: oculta la pestaña inactiva en celular/tablet. Desde
-   1024px no tiene efecto (ver RESPONSIVE), así que ahí las dos
-   secciones se ven siempre. */
+/* Oculta la pestaña inactiva (sin efecto desde 1024px) */
 .oculta-movil {
   display: none;
 }
 
-/* Cuando la pestaña activa es "Detalles", .contenido solo tiene
-   adentro el panel de Reservas oculto: sin esto le quedaría el
-   padding puesto sobre nada, un hueco vacío entre las pestañas y
-   "Detalles del club". */
 .contenido-vacio {
   padding: 0;
 }
 
 /* ===========================================================
-   Pantalla 1 - "Dónde estamos" y pie de página (debajo del sistema
-   de reservas en escritorio; dentro de la pestaña "Detalles del
-   club" en celular/tablet). Todo nuevo: no reemplaza nada que ya
-   existiera, así que no hace falta el truco de "display: contents"
-   de .p1-layout.
+   Pantalla 1 - "Dónde estamos" y pie de página
    =========================================================== */
 .info-club {
   background: var(--blanco);
@@ -682,9 +665,6 @@ button:disabled {
   background: var(--verde-claro);
 }
 
-/* El radio nativo se ve (no lo escondemos): así el foco de teclado y
-   el estado "marcado" quedan con la semántica de siempre, sin tener
-   que reconstruirla a mano con CSS. */
 .pago-opcion input[type='radio'] {
   width: 18px;
   height: 18px;
@@ -1035,9 +1015,7 @@ button:disabled {
   font-weight: 700;
 }
 
-/* Variantes de la pantalla 3 cuando el pago todavía no se confirmó
-   (espera) o no se pudo usar (rechazado, devuelto). El verde queda
-   solo para "turno confirmado". */
+/* Pantalla 3: pago en espera o con error */
 .exito-cabecera--espera {
   background: var(--azul-oscuro);
 }
@@ -1172,25 +1150,8 @@ button:disabled {
 
 /* ===========================================================================
    RESPONSIVE — tablet (768px+) y escritorio (1024px+)
-   ===========================================================================
-   Todo lo de arriba es la versión de celular y no se toca. De acá para
-   abajo solo hay reglas nuevas: clases que no existían, o reglas para
-   clases que ya existen pero escritas DENTRO de un @media. Por debajo de
-   768px ningún @media de este bloque puede estar activo, así que el
-   celular queda pixel a pixel igual que antes.
-
-   Las clases .p1-layout, .p1-principal, .p2-layout, .p2-principal y
-   .p2-lateral son contenedores nuevos que agrupan, en escritorio, algo
-   que hoy ya son hermanos sueltos dentro de .contenido. Su base (sin
-   media query) es "display: contents": no generan caja propia, así que
-   sus hijos quedan como si fueran hijos directos de .contenido, en el
-   mismo orden de siempre — exactamente la estructura de hoy. Recién
-   adentro del @media (min-width: 1024px) se convierten en una caja de
-   verdad (flex o grid) para armar las dos columnas.
-   .p1-lateral y .p2-boton-escritorio son contenido nuevo (la tarjeta
-   "Tu reserva" y un botón de reservar duplicado): en celular siguen
-   cumpliendo esa función la barra fija de siempre, así que arrancan en
-   "display: none".
+   Lo de arriba es la versión de celular. Los contenedores .p1-* / .p2-*
+   usan display: contents en celular y arman las columnas desde 1024px.
    =========================================================================== */
 
 .p1-layout,
@@ -1206,10 +1167,7 @@ button:disabled {
   display: none;
 }
 
-/* -----------------------------------------------------------
-   Tablet: 768px a 1023px — una sola columna, pero más ancha y
-   con más aire.
-   ----------------------------------------------------------- */
+/* --- Tablet: 768px a 1023px --- */
 @media (min-width: 768px) {
   #root {
     max-width: 640px;
@@ -1220,9 +1178,6 @@ button:disabled {
     gap: 22px;
   }
 
-  /* Misma idea que en la base: si la pestaña activa es "Detalles",
-     este padding no tiene que colapsar a 0px (acá .contenido-vacio
-     sí tiene contenido real al lado: InfoClub, debajo). */
   .contenido-vacio {
     padding: 0 24px 32px;
   }
@@ -1236,16 +1191,13 @@ button:disabled {
   }
 }
 
-/* -----------------------------------------------------------
-   Escritorio: 1024px en adelante
-   ----------------------------------------------------------- */
+/* --- Escritorio: 1024px en adelante --- */
 @media (min-width: 1024px) {
   #root {
     max-width: 1200px;
   }
 
-  /* La barra fija de abajo (pantallas 1 y 2) la reemplazan la tarjeta
-     lateral "Tu reserva" y el botón de reservar de la columna derecha. */
+  /* La barra fija de abajo se reemplaza por la columna derecha */
   .barra-fija {
     display: none;
   }
@@ -1257,8 +1209,6 @@ button:disabled {
   /* --- Pantalla 1: foto más alta y grilla con más columnas --- */
   .encabezado-foto-wrap {
     height: 400px;
-    /* El fondo de .encabezado-info sigue tapando el borde inferior con
-       su propio margen negativo, así que acá solo redondeamos arriba. */
     border-radius: 20px 20px 0 0;
   }
 
@@ -1280,8 +1230,7 @@ button:disabled {
     text-decoration: underline;
   }
 
-  /* Sin pestañas en escritorio: Reservas y Detalles del club se ven
-     siempre, una debajo de la otra (ver más abajo). */
+  /* Sin pestañas en escritorio */
   .tabs-club {
     display: none;
   }
