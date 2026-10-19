@@ -1,8 +1,6 @@
-const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const pool = require('./db');
-const migrar = require('./migrar');
 const {
   buscarTurno,
   liberarVencidas,
@@ -14,16 +12,9 @@ const {
 const rutasAdmin = require('./rutasAdmin');
 
 const app = express();
-// En Cloud Run cada pedido pasa por un proxy de Google: sin esto, req.ip
-// sería siempre la IP del proxy y el límite de intentos de login
-// (rutasAdmin.js) se compartiría entre todos los usuarios.
-if (process.env.K_SERVICE) {
-  app.set('trust proxy', 1);
-}
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
-// Cloud Run indica el puerto en PORT; API_PORT queda para desarrollo local.
-const PORT = process.env.PORT || process.env.API_PORT || 3000;
+const PORT = process.env.API_PORT || 3000;
 const CLUB_ID = Number(process.env.CLUB_ID || 1);
 
 // Para chequear rápido que la API ve la base
@@ -237,38 +228,6 @@ app.post('/reservas', async (req, res) => {
 
 app.use('/admin', rutasAdmin);
 
-// En desarrollo, Vite sirve el front y reenvía /api a esta API sacándole el
-// prefijo (vite.config.js). En el contenedor no hay Vite: con WEB_DIST (el
-// front ya construido) un solo servidor sirve las dos cosas, con la API
-// bajo /api igual que en desarrollo, así el front no cambia.
-function servidorCompleto(webDist) {
-  const servidor = express();
-  if (process.env.K_SERVICE) {
-    servidor.set('trust proxy', 1);
-  }
-  // Para Cloud Run: responde aunque la base no ande (para eso está /api/salud).
-  servidor.get('/health', (req, res) => res.send('ok'));
-  servidor.use('/api', app);
-  servidor.use(express.static(webDist));
-  // El front decide qué pantalla mostrar según la URL (/admin, etc.):
-  // cualquier otra ruta GET devuelve index.html. Las que parecen un archivo
-  // (/assets/x.js) dan 404: si no, un asset que falta llegaría como HTML.
-  servidor.use((req, res, next) => {
-    if (req.method !== 'GET' || path.extname(req.path)) return next();
-    res.sendFile(path.join(webDist, 'index.html'));
-  });
-  return servidor;
-}
-
-async function arrancar() {
-  await migrar();
-  const servidor = process.env.WEB_DIST ? servidorCompleto(process.env.WEB_DIST) : app;
-  servidor.listen(PORT, () => {
-    console.log(`API escuchando en http://localhost:${PORT}`);
-  });
-}
-
-arrancar().catch((err) => {
-  console.error('no se pudo arrancar:', err);
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`API escuchando en http://localhost:${PORT}`);
 });
