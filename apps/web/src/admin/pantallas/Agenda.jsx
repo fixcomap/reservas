@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAgenda } from '../apiAdmin.js';
-import { hoyEnArgentina, sumarDias, tituloAgenda, diaDeLaSemana, nombreDiaCorto, horaArgentina } from '../../fechas.js';
+import { getAgenda, reintentarReembolso } from '../apiAdmin.js';
+import {
+  hoyEnArgentina,
+  sumarDias,
+  tituloAgenda,
+  diaDeLaSemana,
+  nombreDiaCorto,
+  horaArgentina,
+  fechaCorta,
+} from '../../fechas.js';
 import { formatearPesos } from '../util.js';
 import { DURACION_MIN } from '../../config.js';
 import { Cargando, ErrorRed } from '../../componentes/Estados.jsx';
 import HojaTurno from '../componentes/HojaTurno.jsx';
 import { IconoFlechaIzquierda, IconoFlechaDerecha, IconoCampana, IconoSalir } from '../componentes/IconosAdmin.jsx';
 
-// Texto extra para el turno (desktop, .adm-turno-extra): forma o
-// estado de pago, aprovechando el lugar de sobra que no hay en celular.
+// Texto extra del turno (solo escritorio)
 function textoExtra(turno) {
   if (turno.estado === 'online') {
     return `${turno.tipo_pago === 'senia' ? 'Seña' : 'Total'} · ${formatearPesos(turno.monto_total)}`;
@@ -19,9 +26,7 @@ function textoExtra(turno) {
   return null;
 }
 
-// Arma, para un turno de la grilla, qué clase de color y qué textos le
-// corresponden. Centralizado acá porque la celda y (en el futuro)
-// cualquier otro resumen necesitan la misma traducción.
+// Clase de color y textos de cada celda de la grilla
 function datosCelda(turno, fecha) {
   switch (turno.estado) {
     case 'libre':
@@ -33,7 +38,12 @@ function datosCelda(turno, fecha) {
       return {
         clase: 'adm-turno--online',
         titulo: turno.cliente_nombre || 'Reserva online',
-        subtitulo: turno.reserva_estado === 'confirmada' ? 'Seña pagada' : 'Pendiente de pago',
+        subtitulo:
+          turno.pago_estado === 'aprobado'
+            ? turno.tipo_pago === 'senia'
+              ? 'Seña pagada'
+              : 'Pago total'
+            : 'Pendiente de pago',
       };
     case 'manual':
       return { clase: 'adm-turno--manual', titulo: turno.cliente_nombre || 'Cliente', subtitulo: 'Por WhatsApp' };
@@ -48,6 +58,62 @@ function datosCelda(turno, fecha) {
     default:
       return { clase: '', titulo: '', subtitulo: '' };
   }
+}
+
+// Aviso de pagos para devolver (reembolso automático fallido)
+function ReembolsosPendientes({ lista, onCambio }) {
+  const [reintentando, setReintentando] = useState(null);
+  const [error, setError] = useState(null);
+
+  if (!lista || lista.length === 0) return null;
+
+  async function reintentar(reservaId) {
+    setReintentando(reservaId);
+    setError(null);
+    try {
+      await reintentarReembolso(reservaId);
+      onCambio();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setReintentando(null);
+    }
+  }
+
+  return (
+    <section className="adm-reembolsos" role="alert">
+      <h2 className="adm-reembolsos-titulo">
+        {lista.length === 1 ? 'Hay 1 pago para devolver' : `Hay ${lista.length} pagos para devolver`}
+      </h2>
+      <p className="adm-reembolsos-texto">
+        Estos jugadores pagaron cuando el turno ya estaba ocupado y la devolución automática falló.
+      </p>
+      <ul className="adm-reembolsos-lista">
+        {lista.map((r) => (
+          <li key={r.reserva_id} className="adm-reembolso">
+            <div>
+              <p className="adm-reembolso-nombre">
+                {r.cliente_nombre} · {formatearPesos(r.monto)}
+              </p>
+              <p className="adm-reembolso-detalle">
+                {r.cancha_nombre} · {fechaCorta(r.fecha)} {r.hora}
+                {r.cliente_tel ? ` · ${r.cliente_tel}` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="adm-boton-secundario"
+              onClick={() => reintentar(r.reserva_id)}
+              disabled={reintentando != null}
+            >
+              {reintentando === r.reserva_id ? 'Reintentando…' : 'Reintentar devolución'}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="adm-reembolsos-error">{error}</p>}
+    </section>
+  );
 }
 
 export default function Agenda({ club, onCerrarSesion }) {
@@ -74,10 +140,7 @@ export default function Agenda({ club, onCerrarSesion }) {
 
   const canchas = datos?.canchas || [];
 
-  // La hora de un turno es la misma para todas las canchas casi
-  // siempre, pero por las dudas armamos la unión: si una cancha tiene
-  // una duración distinta, su columna va a tener huecos en vez de
-  // romper la tabla.
+  // Unión de horarios de todas las canchas
   const horas = useMemo(() => {
     const set = new Set();
     for (const c of canchas) for (const t of c.turnos) set.add(t.hora);
@@ -94,10 +157,7 @@ export default function Agenda({ club, onCerrarSesion }) {
     return m;
   }, [canchas]);
 
-  // Línea de "hora actual" en la grilla (solo visible desde escritorio,
-  // ver estilosAdmin.css): solo tiene sentido si se está viendo el día
-  // de hoy. Mide la posición de las filas en el DOM en vez de calcularla
-  // a mano, así funciona igual sin importar la altura real de cada fila.
+  // Línea de "hora actual" (solo hoy, solo escritorio)
   useEffect(() => {
     if (fecha !== hoyEnArgentina() || horas.length === 0) {
       setLineaAhoraTop(null);
@@ -130,11 +190,6 @@ export default function Agenda({ club, onCerrarSesion }) {
         return;
       }
       const siguiente = filas[i + 1];
-      // La distancia entre el arranque de dos filas ya incluye el alto
-      // real de la fila MÁS el gap entre ellas, sea cual sea en este
-      // ancho de pantalla. Para la última fila no hay una siguiente de
-      // la que copiar ese paso, así que lo aproximamos con su propia
-      // altura (el gap de más es un margen de error mínimo y aceptable).
       const paso = siguiente ? siguiente.offsetTop - filaActual.offsetTop : filaActual.offsetHeight;
       const fraccion = Math.min(1, (minutosAhora - minutosHoras[i]) / DURACION_MIN);
       setLineaAhoraTop(filaActual.offsetTop + fraccion * paso);
@@ -158,14 +213,7 @@ export default function Agenda({ club, onCerrarSesion }) {
 
   return (
     <div className="pantalla-scroll con-barra">
-      {/* .adm-ancho agrupa la cabecera y la grilla para que en
-          escritorio ancho compartan el mismo contenedor centrado (ver
-          estilosAdmin.css); en celular y tablet es transparente
-          (display: contents) y queda igual que siempre. */}
       <div className="adm-ancho">
-      {/* .adm-agenda-cabecera agrupa estos dos hermanos para el layout
-          de escritorio (fila), pero en celular y tablet es transparente
-          (display: contents) y quedan como hoy, uno debajo del otro. */}
       <div className="adm-agenda-cabecera">
         <header className="adm-cabecera">
           <div className="adm-cabecera-marca">
@@ -193,7 +241,9 @@ export default function Agenda({ club, onCerrarSesion }) {
               <p className="adm-stat-etiqueta">Reservas hoy</p>
             </div>
             <div className="adm-stat">
-              <p className="adm-stat-valor">{resumen?.senias_cobradas == null ? '—' : resumen.senias_cobradas}</p>
+              <p className="adm-stat-valor">
+                {resumen?.senias_cobradas == null ? '—' : formatearPesos(resumen.senias_cobradas)}
+              </p>
               <p className="adm-stat-etiqueta">Señas cobradas</p>
             </div>
             <div className="adm-stat">
@@ -224,10 +274,7 @@ export default function Agenda({ club, onCerrarSesion }) {
           >
             <IconoFlechaDerecha />
           </button>
-          {/* Nuevo: solo en escritorio, ver estilosAdmin.css. En celular
-              ya se llega a hoy fácil con las flechas. Si ya estás en
-              hoy, el título de arriba ya lo dice ("Hoy · viernes 16
-              oct"): el botón sobra y no se muestra. */}
+          {/* Solo escritorio */}
           {fecha !== hoyEnArgentina() && (
             <button type="button" className="adm-boton-hoy" onClick={() => setFecha(hoyEnArgentina())}>
               Volver a hoy
@@ -237,6 +284,7 @@ export default function Agenda({ club, onCerrarSesion }) {
       </div>
 
       <div className="contenido">
+        <ReembolsosPendientes lista={datos?.reembolsos_pendientes} onCambio={() => cargar(fecha)} />
         {cargando && <Cargando />}
         {!cargando && error && <ErrorRed mensaje={error} onReintentar={() => cargar(fecha)} />}
 
@@ -248,11 +296,6 @@ export default function Agenda({ club, onCerrarSesion }) {
 
         {!cargando && !error && horas.length > 0 && (
           <>
-            {/* .adm-grilla-scroll es transparente en celular/tablet
-                (display: contents): .adm-grilla queda como hijo directo
-                de .contenido, igual que siempre. Desde 1024px se
-                convierte en la caja con scroll propio que mantiene el
-                encabezado y la columna de horas fijos. */}
             <div className="adm-grilla-scroll">
               <div className="adm-grilla" style={{ '--adm-columnas': canchas.length }} ref={grillaRef}>
                 <div className="adm-grilla-encabezado">
@@ -275,9 +318,7 @@ export default function Agenda({ club, onCerrarSesion }) {
                       const { clase, titulo, subtitulo } = datosCelda(turno, fecha);
                       const claseFinal = `adm-turno ${clase}${turno.pasado ? ' adm-turno--pasado' : ''}`;
 
-                      // Un turno libre que ya pasó no se puede tocar para
-                      // cargar ni bloquear: no tiene sentido y además ya
-                      // no es ni siquiera un turno reservable.
+                      // Libre y pasado: no se puede tocar
                       if (turno.estado === 'libre' && turno.pasado) {
                         return (
                           <div key={c.id} className={claseFinal}>
@@ -296,9 +337,6 @@ export default function Agenda({ club, onCerrarSesion }) {
                         >
                           <span className="adm-turno-titulo">{titulo}</span>
                           <span className="adm-turno-subtitulo">{subtitulo}</span>
-                          {/* Monto y forma/estado de pago: en celular no
-                              entra, en escritorio hay lugar de sobra
-                              (.adm-turno-extra). */}
                           {textoExtra(turno) && <span className="adm-turno-extra">{textoExtra(turno)}</span>}
                         </button>
                       );

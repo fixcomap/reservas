@@ -1,11 +1,7 @@
-// Minutos que dura un turno. La API ya los usa para armar la grilla.
+// Minutos que dura un turno
 export const DURACION_MIN = 90;
 
-// Misma lista que SERVICIOS_DISPONIBLES en apps/api/src/rutasAdmin.js:
-// los checkboxes de Ajustes solo pueden elegir de acá, para no guardar
-// texto libre como servicio. Cada uno tiene su ícono en
-// componentes/InfoClub.jsx (IconoServicio si en algún momento se
-// desincroniza esta lista con esa otra).
+// Misma lista que apps/api/src/rutasAdmin.js
 export const SERVICIOS_DISPONIBLES = [
   'Wi-Fi',
   'Vestuario',

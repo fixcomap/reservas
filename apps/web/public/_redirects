@@ -1,0 +1,5 @@
+# Cloudflare Pages: las rutas de la app cargan index.html y React decide qué mostrar.
+# (Además, como no hay 404.html, Pages ya trata el sitio como una SPA.)
+/admin        /index.html  200
+/admin/*      /index.html  200
+/reserva/*    /index.html  200

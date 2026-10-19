@@ -18,12 +18,13 @@
   --radio: 16px;
   --sombra: 0 2px 10px rgba(16, 36, 28, 0.06);
 
-  /* Alto de la barra fija de abajo: se lo dejamos de padding al contenido
-     para que el último elemento no quede tapado. */
+  /* Alto de la barra fija de abajo */
   --alto-barra: 86px;
 
-  /* El diseño es claro. Sin esto, Chrome con modo oscuro automatico
-     invierte los colores y los inputs quedan grises. */
+  /* Alto del cartel de demo de arriba (0 si no está) */
+  --alto-cartel-demo: 0px;
+
+  /* Evita que el modo oscuro automático invierta los colores */
   color-scheme: light;
 }
 
@@ -78,13 +79,13 @@ button:disabled {
 #root {
   max-width: var(--ancho-app);
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   background: var(--fondo);
   position: relative;
 }
 
 .pantalla-scroll {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   display: flex;
   flex-direction: column;
 }
@@ -227,16 +228,13 @@ button:disabled {
   margin-top: 5px;
 }
 
-/* Nuevo: solo se ve desde escritorio (ver RESPONSIVE más abajo). En
-   celular la sección del mapa está a un scroll de distancia nomás. */
+/* Solo escritorio */
 .club-link-mapa {
   display: none;
 }
 
 /* ===========================================================
-   Pantalla 1 - Pestañas "Reservas" / "Detalles del club" (celular y
-   tablet, menos de 1024px; ver RESPONSIVE más abajo para cuando se
-   ocultan). Todo nuevo, ninguna clase existía antes de esta tarea.
+   Pantalla 1 - Pestañas (celular y tablet)
    =========================================================== */
 .tabs-club {
   bottom:9px;
@@ -246,8 +244,6 @@ button:disabled {
   gap: 32px;
   padding: 0 16px;
   margin-bottom: 4px;
-  /* Sombra suave en vez de una línea, para separar las pestañas del
-     contenido de abajo. */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0);
 }
 
@@ -301,27 +297,17 @@ button:disabled {
   gap: 18px;
 }
 
-/* Utilidad: oculta la pestaña inactiva en celular/tablet. Desde
-   1024px no tiene efecto (ver RESPONSIVE), así que ahí las dos
-   secciones se ven siempre. */
+/* Oculta la pestaña inactiva (sin efecto desde 1024px) */
 .oculta-movil {
   display: none;
 }
 
-/* Cuando la pestaña activa es "Detalles", .contenido solo tiene
-   adentro el panel de Reservas oculto: sin esto le quedaría el
-   padding puesto sobre nada, un hueco vacío entre las pestañas y
-   "Detalles del club". */
 .contenido-vacio {
   padding: 0;
 }
 
 /* ===========================================================
-   Pantalla 1 - "Dónde estamos" y pie de página (debajo del sistema
-   de reservas en escritorio; dentro de la pestaña "Detalles del
-   club" en celular/tablet). Todo nuevo: no reemplaza nada que ya
-   existiera, así que no hace falta el truco de "display: contents"
-   de .p1-layout.
+   Pantalla 1 - "Dónde estamos" y pie de página
    =========================================================== */
 .info-club {
   background: var(--blanco);
@@ -682,9 +668,6 @@ button:disabled {
   background: var(--verde-claro);
 }
 
-/* El radio nativo se ve (no lo escondemos): así el foco de teclado y
-   el estado "marcado" quedan con la semántica de siempre, sin tener
-   que reconstruirla a mano con CSS. */
 .pago-opcion input[type='radio'] {
   width: 18px;
   height: 18px;
@@ -959,6 +942,14 @@ button:disabled {
   line-height: 1.5;
 }
 
+.letra-chica-1 {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
 .aviso-error {
   background: #FDECEC;
   border: 1px solid #F6C9C9;
@@ -1033,6 +1024,33 @@ button:disabled {
   padding: 5px 11px;
   font-size: 11px;
   font-weight: 700;
+}
+
+/* Pantalla 3: pago en espera o con error */
+.exito-cabecera--espera {
+  background: var(--azul-oscuro);
+}
+
+.exito-cabecera--espera .exito-circulo {
+  color: var(--azul-oscuro);
+}
+
+.exito-cabecera--error {
+  background: #9C2A2A;
+}
+
+.exito-cabecera--error .exito-circulo {
+  color: #9C2A2A;
+}
+
+.pastilla--espera {
+  background: #E3F0FA;
+  color: #0F4F80;
+}
+
+.pastilla--error {
+  background: #FDECEC;
+  color: #9C2A2A;
 }
 
 .reserva-fecha {
@@ -1143,25 +1161,8 @@ button:disabled {
 
 /* ===========================================================================
    RESPONSIVE — tablet (768px+) y escritorio (1024px+)
-   ===========================================================================
-   Todo lo de arriba es la versión de celular y no se toca. De acá para
-   abajo solo hay reglas nuevas: clases que no existían, o reglas para
-   clases que ya existen pero escritas DENTRO de un @media. Por debajo de
-   768px ningún @media de este bloque puede estar activo, así que el
-   celular queda pixel a pixel igual que antes.
-
-   Las clases .p1-layout, .p1-principal, .p2-layout, .p2-principal y
-   .p2-lateral son contenedores nuevos que agrupan, en escritorio, algo
-   que hoy ya son hermanos sueltos dentro de .contenido. Su base (sin
-   media query) es "display: contents": no generan caja propia, así que
-   sus hijos quedan como si fueran hijos directos de .contenido, en el
-   mismo orden de siempre — exactamente la estructura de hoy. Recién
-   adentro del @media (min-width: 1024px) se convierten en una caja de
-   verdad (flex o grid) para armar las dos columnas.
-   .p1-lateral y .p2-boton-escritorio son contenido nuevo (la tarjeta
-   "Tu reserva" y un botón de reservar duplicado): en celular siguen
-   cumpliendo esa función la barra fija de siempre, así que arrancan en
-   "display: none".
+   Lo de arriba es la versión de celular. Los contenedores .p1-* / .p2-*
+   usan display: contents en celular y arman las columnas desde 1024px.
    =========================================================================== */
 
 .p1-layout,
@@ -1177,10 +1178,7 @@ button:disabled {
   display: none;
 }
 
-/* -----------------------------------------------------------
-   Tablet: 768px a 1023px — una sola columna, pero más ancha y
-   con más aire.
-   ----------------------------------------------------------- */
+/* --- Tablet: 768px a 1023px --- */
 @media (min-width: 768px) {
   #root {
     max-width: 640px;
@@ -1191,9 +1189,6 @@ button:disabled {
     gap: 22px;
   }
 
-  /* Misma idea que en la base: si la pestaña activa es "Detalles",
-     este padding no tiene que colapsar a 0px (acá .contenido-vacio
-     sí tiene contenido real al lado: InfoClub, debajo). */
   .contenido-vacio {
     padding: 0 24px 32px;
   }
@@ -1207,16 +1202,32 @@ button:disabled {
   }
 }
 
-/* -----------------------------------------------------------
-   Escritorio: 1024px en adelante
-   ----------------------------------------------------------- */
+/* --- Escritorio: 1024px en adelante --- */
 @media (min-width: 1024px) {
+  /* Ocupa todo el ancho; el contenido se limita con --margen-pc */
   #root {
-    max-width: 1200px;
+    max-width: none;
   }
 
-  /* La barra fija de abajo (pantallas 1 y 2) la reemplazan la tarjeta
-     lateral "Tu reserva" y el botón de reservar de la columna derecha. */
+  /* Margen lateral de todas las secciones: chico, crece con la pantalla
+     y nunca deja el contenido más ancho que 1680px. El % es del ancho
+     de la página, porque se usa en elementos que ocupan todo el ancho. */
+  :root {
+    --margen-pc: max(clamp(32px, 4vw, 96px), calc((100% - 1680px) / 2));
+  }
+
+  .encabezado-marca {
+    padding-left: var(--margen-pc);
+    padding-right: var(--margen-pc);
+  }
+
+  .contenido,
+  .contenido-vacio {
+    padding-left: var(--margen-pc);
+    padding-right: var(--margen-pc);
+  }
+
+  /* La barra fija de abajo se reemplaza por la columna derecha */
   .barra-fija {
     display: none;
   }
@@ -1225,11 +1236,20 @@ button:disabled {
     padding-bottom: 0;
   }
 
+  /* Mismo margen que .contenido, para alinear con los cuadros de reserva */
+  .encabezado-foto-wrap,
+  .encabezado-info,
+  .info-club,
+  .club-footer {
+    margin-left: var(--margen-pc);
+    margin-right: var(--margen-pc);
+  }
+
   /* --- Pantalla 1: foto más alta y grilla con más columnas --- */
   .encabezado-foto-wrap {
-    height: 400px;
-    /* El fondo de .encabezado-info sigue tapando el borde inferior con
-       su propio margen negativo, así que acá solo redondeamos arriba. */
+    width: auto;
+    /* Más alta en pantallas anchas para que no quede tan recortada */
+    height: clamp(400px, 26vw, 460px);
     border-radius: 20px 20px 0 0;
   }
 
@@ -1251,8 +1271,7 @@ button:disabled {
     text-decoration: underline;
   }
 
-  /* Sin pestañas en escritorio: Reservas y Detalles del club se ven
-     siempre, una debajo de la otra (ver más abajo). */
+  /* Sin pestañas en escritorio */
   .tabs-club {
     display: none;
   }
@@ -1282,7 +1301,7 @@ button:disabled {
   .p1-lateral {
     display: block;
     position: sticky;
-    top: 24px;
+    top: calc(24px + var(--alto-cartel-demo));
   }
 
   .p1-resumen .boton {
@@ -1306,7 +1325,7 @@ button:disabled {
 
   .p2-lateral {
     position: sticky;
-    top: 24px;
+    top: calc(24px + var(--alto-cartel-demo));
   }
 
   .p2-boton-escritorio {
@@ -1341,10 +1360,17 @@ button:disabled {
     gap: 32px;
   }
 
+  /* La caja se estira al alto de las tarjetas; el mapa la llena entera */
   .info-club-mapa-wrap {
     flex: 1 1 55%;
-    height: 100%;
+    height: auto;
     min-height: 360px;
+    position: relative;
+  }
+
+  .info-club-mapa {
+    position: absolute;
+    inset: 0;
   }
 
   .info-club-tarjetas {
@@ -1365,4 +1391,32 @@ button:disabled {
   .club-footer {
     padding: 28px 32px 32px;
   }
+}
+
+/* ===========================================================
+   Cartel "Versión de demostración" (VITE_DEMO=true)
+   =========================================================== */
+.con-cartel-demo {
+  --alto-cartel-demo: 24px;
+}
+
+.con-cartel-demo body {
+  padding-top: var(--alto-cartel-demo);
+}
+
+.cartel-demo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: var(--alto-cartel-demo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--texto);
+  color: var(--blanco);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }

@@ -1,6 +1,0 @@
-.git
-**/node_modules
-**/dist
-Bocetos
-.env
-.env.*

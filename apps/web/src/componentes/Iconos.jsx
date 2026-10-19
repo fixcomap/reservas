@@ -1,6 +1,4 @@
-// Íconos dibujados a mano en SVG para no sumar una librería entera.
-// Son decorativos: los marcamos aria-hidden y el texto de al lado explica
-// qué hace cada botón.
+// Íconos SVG decorativos (aria-hidden).
 
 const base = {
   fill: 'none',
@@ -75,9 +73,15 @@ export function IconoTilde({ tamanio = 34 }) {
   );
 }
 
-// ===========================================================
-// Sección "Dónde estamos" (info del club): contacto y servicios
-// ===========================================================
+export function IconoCruz({ tamanio = 34 }) {
+  return (
+    <svg {...base} strokeWidth={2.6} width={tamanio} height={tamanio} viewBox="0 0 24 24">
+      <path d="M7 7l10 10M17 7 7 17" />
+    </svg>
+  );
+}
+
+// --- Info del club: contacto y servicios ---
 
 export function IconoWhatsApp({ tamanio = 20 }) {
   return (
@@ -98,13 +102,7 @@ export function IconoInstagram({ tamanio = 20 }) {
   );
 }
 
-// Los 13 íconos de servicios de acá abajo son trazos de Tabler Icons
-// (MIT), copiados en línea tal cual los pide la tarea: sin instalar la
-// librería, solo el SVG de cada ícono adentro de nuestro propio
-// componente, reusando el mismo `base` (trazo, grosor y tamaño) que el
-// resto de los íconos de la app para que no se note la diferencia.
-// Ver THIRD_PARTY_LICENSES.md para la licencia completa y el detalle de
-// qué ícono de Tabler es cada uno.
+// Íconos de servicios: Tabler Icons (MIT), ver THIRD_PARTY_LICENSES.md
 
 export function IconoWifi({ tamanio = 20 }) {
   return (
@@ -231,8 +229,7 @@ export function IconoQuincho({ tamanio = 20 }) {
   );
 }
 
-// Tabler no tiene un ícono de paleta de pádel: "ping-pong" (raqueta +
-// pelota) es el más parecido que tiene la librería.
+// "ping-pong" de Tabler
 export function IconoPaletas({ tamanio = 20 }) {
   return (
     <svg {...base} width={tamanio} height={tamanio} viewBox="0 0 24 24">

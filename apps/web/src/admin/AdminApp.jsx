@@ -8,15 +8,13 @@ import BarraLateralAdmin from './componentes/BarraLateralAdmin.jsx';
 import { getYo, logout, escucharPerdidaDeSesion } from './apiAdmin.js';
 import './estilosAdmin.css';
 
-// Punto de entrada del panel. Decide entre login y agenda según si hay
-// una sesión válida, y maneja el cambio de pestaña de la barra de abajo.
+// Panel del dueño: login o pantallas según la sesión.
 export default function AdminApp() {
   // null = todavía no sabemos, false = no hay sesión, objeto = logueado
   const [sesion, setSesion] = useState(null);
   const [pestania, setPestania] = useState('agenda');
 
-  // Cualquier pedido al panel que vuelva con 401 nos manda de nuevo al
-  // login (la sesión venció o la cookie ya no sirve).
+  // Cualquier 401 vuelve al login
   useEffect(() => {
     escucharPerdidaDeSesion(() => setSesion(false));
   }, []);
@@ -37,8 +35,6 @@ export default function AdminApp() {
     try {
       await logout();
     } catch {
-      // Si el pedido falla igual sacamos al admin de la pantalla: la
-      // cookie ya puede haber quedado inválida de cualquier forma.
     }
     setSesion(false);
     setPestania('agenda');
@@ -56,10 +52,7 @@ export default function AdminApp() {
     return <Login onIngresar={alIngresar} />;
   }
 
-  // .adm-shell y .adm-main no generan caja en celular/tablet (display:
-  // contents, ver estilosAdmin.css), así que ahí la pantalla activa y
-  // la barra de pestañas quedan exactamente como antes. Desde 1024px
-  // se convierten en la barra lateral fija + el área de contenido.
+  // Desde 1024px: barra lateral + contenido
   return (
     <div className="adm-shell">
       <BarraLateralAdmin

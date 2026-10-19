@@ -1,9 +1,4 @@
-// wa.me necesita el teléfono completo, sin el "+" ni espacios ni
-// guiones. Acá los clientes se cargan como "11 1234 5678" (sin código
-// de país), así que si no viene uno ya puesto le agregamos el 54 de
-// Argentina. Si alguna vez se carga un número de otro país con su
-// propio código, esto podría agregarle un 54 de más: es una
-// simplificación a propósito, no una validación de números reales.
+// Link de wa.me; agrega el 54 de Argentina si falta
 export function linkWhatsApp(telCrudo) {
   const digitos = String(telCrudo || '').replace(/\D/g, '');
   if (!digitos) return null;
@@ -11,13 +6,17 @@ export function linkWhatsApp(telCrudo) {
   return `https://wa.me/${conCodigo}`;
 }
 
-// Formato de pesos para montos reales del panel (total de una reserva,
-// lo pagado hasta ahora...). A diferencia de src/precios.js (la del
-// jugador), acá el 0 es un valor real — "pagado: $0" porque todavía no
-// se integró Mercado Pago — y no "todavía no hay precio cargado", así
-// que nunca lo cambiamos por un texto como "Consultar".
+// 20000 -> "$20.000" (el 0 se muestra como $0)
 export function formatearPesos(monto) {
   const numero = Number(monto);
   if (!Number.isFinite(numero)) return '—';
   return '$' + numero.toLocaleString('es-AR');
 }
+
+export const TEXTO_PAGO = {
+  pendiente: 'Pendiente',
+  aprobado: 'Aprobado',
+  rechazado: 'Rechazado',
+  reembolsado: 'Reembolsado',
+  reembolso_pendiente: 'Reembolso pendiente',
+};

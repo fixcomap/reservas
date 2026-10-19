@@ -20,8 +20,7 @@ import {
   IconoServicio,
 } from './Iconos.jsx';
 
-// Misma lista que SERVICIOS_DISPONIBLES en config.js: un ícono por
-// servicio, más IconoServicio como respaldo si algún día se desincroniza.
+// Un ícono por servicio (misma lista que config.js)
 const ICONO_SERVICIO = {
   'Wi-Fi': IconoWifi,
   Vestuario: IconoVestuario,
@@ -38,16 +37,7 @@ const ICONO_SERVICIO = {
   'Alquiler de paletas': IconoPaletas,
 };
 
-// En escritorio esta sección va siempre debajo del sistema de reservas
-// (sin pestañas). En celular y tablet (menos de 1024px) vive adentro
-// de la pestaña "Detalles del club": acá es tabpanel, oculta con la
-// clase .oculta-movil cuando `seccion` no es 'detalles' (ver
-// ElegirTurno.jsx). estilos.css fuerza que esa clase no tenga efecto
-// desde 1024px, así en escritorio siempre se ve.
-//
-// `club` llega de GET /club. Mientras no haya cargado (o si falló),
-// no se muestra nada: ninguna de estas secciones es indispensable
-// para reservar, así que es mejor omitirlas que mostrar huecos vacíos.
+// "Dónde estamos": mapa, horarios, servicios y contacto (datos de GET /club)
 export default function InfoClub({ club, seccion }) {
   if (!club) return null;
 

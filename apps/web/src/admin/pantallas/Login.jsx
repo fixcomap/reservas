@@ -23,8 +23,6 @@ export default function Login({ onIngresar }) {
       if (err.estado === 429) {
         setBloqueado(true);
       } else {
-        // Mensaje siempre genérico: ni la API ni el front dicen si el
-        // email existe o no, para no ayudar a nadie a adivinar cuentas.
         setError(err.message || 'Email o contraseña incorrectos');
       }
     } finally {
