@@ -939,6 +939,14 @@ button:disabled {
   line-height: 1.5;
 }
 
+.letra-chica-1 {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
 .aviso-error {
   background: #FDECEC;
   border: 1px solid #F6C9C9;
@@ -1193,8 +1201,27 @@ button:disabled {
 
 /* --- Escritorio: 1024px en adelante --- */
 @media (min-width: 1024px) {
+  /* Ocupa todo el ancho; el contenido se limita con --margen-pc */
   #root {
-    max-width: 1200px;
+    max-width: none;
+  }
+
+  /* Margen lateral de todas las secciones: chico, crece con la pantalla
+     y nunca deja el contenido más ancho que 1680px. El % es del ancho
+     de la página, porque se usa en elementos que ocupan todo el ancho. */
+  :root {
+    --margen-pc: max(clamp(32px, 4vw, 96px), calc((100% - 1680px) / 2));
+  }
+
+  .encabezado-marca {
+    padding-left: var(--margen-pc);
+    padding-right: var(--margen-pc);
+  }
+
+  .contenido,
+  .contenido-vacio {
+    padding-left: var(--margen-pc);
+    padding-right: var(--margen-pc);
   }
 
   /* La barra fija de abajo se reemplaza por la columna derecha */
@@ -1206,9 +1233,20 @@ button:disabled {
     padding-bottom: 0;
   }
 
+  /* Mismo margen que .contenido, para alinear con los cuadros de reserva */
+  .encabezado-foto-wrap,
+  .encabezado-info,
+  .info-club,
+  .club-footer {
+    margin-left: var(--margen-pc);
+    margin-right: var(--margen-pc);
+  }
+
   /* --- Pantalla 1: foto más alta y grilla con más columnas --- */
   .encabezado-foto-wrap {
-    height: 400px;
+    width: auto;
+    /* Más alta en pantallas anchas para que no quede tan recortada */
+    height: clamp(400px, 26vw, 460px);
     border-radius: 20px 20px 0 0;
   }
 
@@ -1319,10 +1357,17 @@ button:disabled {
     gap: 32px;
   }
 
+  /* La caja se estira al alto de las tarjetas; el mapa la llena entera */
   .info-club-mapa-wrap {
     flex: 1 1 55%;
-    height: 100%;
+    height: auto;
     min-height: 360px;
+    position: relative;
+  }
+
+  .info-club-mapa {
+    position: absolute;
+    inset: 0;
   }
 
   .info-club-tarjetas {

@@ -22,7 +22,7 @@ export default function Encabezado({ club }) {
       </div>
 
       <div className="encabezado-foto-wrap">
-        <img className="encabezado-foto" src="/club.jpg" alt="Cancha de pádel del club" />
+        <img className="encabezado-foto" src="/club.webp" alt="Cancha de pádel del club" />
       </div>
 
       <div className="encabezado-info">

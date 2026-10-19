@@ -212,7 +212,7 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
                 </p>
               )}
 
-              <p className="letra-chica">
+              <p className="letra-chica-1">
                 Cancelando con más de [X] horas de anticipación te devolvemos la seña.
               </p>
 
