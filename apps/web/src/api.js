@@ -1,10 +1,11 @@
-// Único lugar del front que habla con la API.
-// Vite redirige /api a http://localhost:3000 (ver vite.config.js).
+// Llamadas a la API.
+// En local: /api, que Vite redirige a http://localhost:3000.
+// En producción: VITE_API_URL (ej: https://api-reservas.fixcomap.com).
+export const URL_API = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
-const BASE = '/api';
+const BASE = URL_API;
 
-// Error propio para poder distinguir en las pantallas un 409
-// ("alguien te ganó el turno") de una caída de red.
+// Error con el status HTTP (0 = sin respuesta)
 export class ErrorApi extends Error {
   constructor(mensaje, estado) {
     super(mensaje);
@@ -18,7 +19,6 @@ async function pedir(ruta, opciones) {
   try {
     respuesta = await fetch(BASE + ruta, opciones);
   } catch {
-    // No hubo respuesta: la API está apagada o no hay internet.
     throw new ErrorApi('No pudimos conectarnos. Revisá tu conexión e intentá de nuevo.', 0);
   }
 
@@ -44,4 +44,8 @@ export function crearReserva(datos) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(datos),
   });
+}
+
+export function getEstadoReserva(token) {
+  return pedir(`/reservas/estado/${encodeURIComponent(token)}`);
 }

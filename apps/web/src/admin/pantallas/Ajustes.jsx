@@ -7,10 +7,7 @@ import { SERVICIOS_DISPONIBLES } from '../../config.js';
 const RE_WHATSAPP = /^\d{8,15}$/;
 const RE_INSTAGRAM = /^[A-Za-z0-9_.]{1,30}$/;
 
-// Pantalla "Ajustes" del panel: precio de cada cancha y porcentaje de
-// seña del club. Los dos se guardan juntos con un solo botón, aunque
-// en la API sean dos endpoints separados (PUT /ajustes/precios y
-// PUT /ajustes/senia): acá es un solo formulario para el dueño.
+// Ajustes: precios, porcentaje de seña y datos del club.
 export default function Ajustes({ onCerrarSesion }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -22,8 +19,7 @@ export default function Ajustes({ onCerrarSesion }) {
   const [errorGuardar, setErrorGuardar] = useState(null);
   const [guardadoOk, setGuardadoOk] = useState(false);
 
-  // Datos del club: carga y formulario propios, independientes de
-  // precios/seña de arriba (son dos secciones sin relación entre sí).
+  // Datos del club
   const [cargandoClub, setCargandoClub] = useState(true);
   const [errorClub, setErrorClub] = useState(null);
   const [direccionCompleta, setDireccionCompleta] = useState('');

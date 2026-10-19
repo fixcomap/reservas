@@ -1,0 +1,27 @@
+# Secretos: nunca dentro de la imagen (en Cloud Run van como variables o Secret Manager)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Se instalan dentro de la imagen
+node_modules
+**/node_modules
+
+# Pruebas
+test
+tests
+__tests__
+**/*.test.js
+**/*.spec.js
+coverage
+.nyc_output
+
+# Scripts que se corren desde la PC (migrar, demo, crear-admin)
+scripts
+
+# Otros
+.git
+npm-debug.log*
+Dockerfile
+.dockerignore

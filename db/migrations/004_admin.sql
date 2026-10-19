@@ -6,15 +6,11 @@ CREATE TABLE administradores (
   email         text NOT NULL UNIQUE,
   password_hash text NOT NULL,
   creado_en     timestamptz NOT NULL DEFAULT now(),
-  -- El email siempre se guarda en minúsculas: la app ya lo normaliza antes
-  -- de insertar, y este CHECK es una segunda barrera por si algún día se
-  -- inserta desde otro lado.
+  -- Email siempre en minúsculas
   CONSTRAINT administradores_email_minusculas CHECK (email = lower(email))
 );
 
--- Cada fila es una sesión de navegador. No guardamos el token que recibe
--- el admin en la cookie, solo su hash: si alguien lee la base no puede
--- usar esos valores para autenticarse, porque no tiene el token original.
+-- Se guarda el hash del token de la cookie, nunca el token
 CREATE TABLE sesiones (
   id         serial PRIMARY KEY,
   token_hash text NOT NULL UNIQUE,
@@ -23,6 +19,4 @@ CREATE TABLE sesiones (
   creado_en  timestamptz NOT NULL DEFAULT now()
 );
 
--- Para buscar/borrar rápido las sesiones de un admin (por ejemplo al
--- cambiarle la contraseña, en el futuro, habría que invalidarlas todas).
 CREATE INDEX sesiones_admin_id_idx ON sesiones (admin_id);

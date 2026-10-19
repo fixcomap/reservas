@@ -3,15 +3,12 @@ import { getDisponibilidad, crearReserva, getClub } from './api.js';
 import { proximosSieteDias } from './fechas.js';
 import ElegirTurno from './pantallas/ElegirTurno.jsx';
 import ConfirmarReserva from './pantallas/ConfirmarReserva.jsx';
-import TurnoConfirmado from './pantallas/TurnoConfirmado.jsx';
 
-// Acá vive todo el estado de la app. Las pantallas no guardan nada propio
-// (salvo lo que el usuario está tipeando), solo reciben datos y avisan
-// cuando pasa algo.
+// Estado de la app del jugador; las pantallas solo reciben datos.
 export default function App() {
   const dias = useMemo(() => proximosSieteDias(), []);
 
-  const [pantalla, setPantalla] = useState('elegir'); // elegir | confirmar | listo
+  const [pantalla, setPantalla] = useState('elegir'); // elegir | confirmar
   const [fecha, setFecha] = useState(dias[0].iso);
   const [hora, setHora] = useState(null);
   const [canchaId, setCanchaId] = useState(null);
@@ -20,28 +17,29 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(null);
 
-  // Datos del club (nombre, dirección, mapa, horarios, contacto) para
-  // el encabezado y la sección "Dónde estamos" de la pantalla 1. Se
-  // piden una sola vez; si fallan, esas secciones simplemente no
-  // muestran nada en vez de romper el resto de la app.
   const [club, setClub] = useState(null);
   useEffect(() => {
     getClub()
       .then(setClub)
       .catch(() => setClub(null));
   }, []);
-  // Valor por defecto hasta que llegue el real de la API; el que vale
-  // para calcular la seña de verdad es siempre el que calcula el
-  // servidor al reservar, esto es solo para mostrar algo mientras tanto.
+  // Solo para mostrar; el monto real lo calcula el servidor
   const [seniaPorcentaje, setSeniaPorcentaje] = useState(50);
 
   const [enviando, setEnviando] = useState(false);
   const [errorReserva, setErrorReserva] = useState(null);
   const [avisoGrilla, setAvisoGrilla] = useState(null);
-  const [reserva, setReserva] = useState(null);
 
-  // Un contador que subimos a mano cuando queremos volver a pedir
-  // la disponibilidad del mismo día (reintentar, o después de un 409).
+  // Al volver con "atrás" desde Mercado Pago, destraba el botón
+  useEffect(() => {
+    function alVolver(evento) {
+      if (evento.persisted) setEnviando(false);
+    }
+    window.addEventListener('pageshow', alVolver);
+    return () => window.removeEventListener('pageshow', alVolver);
+  }, []);
+
+  // Subirlo vuelve a pedir la disponibilidad
   const [recarga, setRecarga] = useState(0);
 
   useEffect(() => {
@@ -65,14 +63,12 @@ export default function App() {
         if (!cancelado) setCargando(false);
       });
 
-    // Si el usuario cambia de día antes de que llegue la respuesta,
-    // ignoramos la vieja para no pisar los datos nuevos.
     return () => {
       cancelado = true;
     };
   }, [fecha, recarga]);
 
-  // Horarios que tienen al menos una cancha libre, ordenados.
+  // Horarios con al menos una cancha libre
   const horarios = useMemo(() => {
     const libres = new Set();
     for (const cancha of canchas) {
@@ -93,7 +89,6 @@ export default function App() {
     [canchasLibres, canchaId]
   );
 
-  // Si después de recargar el horario elegido ya no existe, lo soltamos.
   useEffect(() => {
     if (hora && !cargando && !horarios.includes(hora)) {
       setHora(null);
@@ -127,14 +122,12 @@ export default function App() {
         hora,
         ...datosCliente,
       });
-      // Guardamos una foto del turno: la disponibilidad se va a recargar
-      // y no queremos que el comprobante cambie por debajo.
-      setReserva({ ...creada, fecha, hora, cancha: canchaElegida });
-      setPantalla('listo');
+      // Mercado Pago vuelve a /reserva/<token>
+      window.location.assign(creada.checkout_url);
+      return;
     } catch (err) {
       if (err.estado === 409) {
-        // Alguien reservó primero: lo mandamos de vuelta a la grilla
-        // con datos frescos para que elija otro turno.
+        // Alguien reservó primero: volver a la grilla
         setAvisoGrilla(`${err.message}. Elegí otro horario.`);
         setCanchaId(null);
         setPantalla('elegir');
@@ -142,20 +135,8 @@ export default function App() {
       } else {
         setErrorReserva(err.message);
       }
-    } finally {
-      setEnviando(false);
     }
-  }
-
-  function empezarDeNuevo() {
-    setPantalla('elegir');
-    setReserva(null);
-    setHora(null);
-    setCanchaId(null);
-    setErrorReserva(null);
-    setAvisoGrilla(null);
-    setFecha(dias[0].iso);
-    recargarDisponibilidad();
+    setEnviando(false);
   }
 
   if (pantalla === 'confirmar' && canchaElegida) {
@@ -173,18 +154,6 @@ export default function App() {
           setPantalla('elegir'); // la selección queda como estaba
         }}
         onReservar={reservar}
-      />
-    );
-  }
-
-  if (pantalla === 'listo' && reserva) {
-    return (
-      <TurnoConfirmado
-        reserva={reserva}
-        fecha={reserva.fecha}
-        hora={reserva.hora}
-        cancha={reserva.cancha}
-        onOtraReserva={empezarDeNuevo}
       />
     );
   }

@@ -12,6 +12,7 @@ const {
   ErrorTurno,
 } = require('./turnos');
 const { verificarPassword, hashFalso, crearSesion, destruirSesion, requireAdmin } = require('./auth');
+const { verificarPago } = require('./pagos');
 
 const router = express.Router();
 
@@ -21,9 +22,7 @@ const RE_TEL = /^\+?[\d\s-]{8,20}$/;
 
 const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-// Misma lista que SERVICIOS_DISPONIBLES en apps/web/src/config.js: el
-// panel manda checkboxes de esta lista, pero igual la validamos acá
-// para no guardar un servicio inventado si alguien manda el request a mano.
+// Misma lista que apps/web/src/config.js
 const SERVICIOS_DISPONIBLES = [
   'Wi-Fi',
   'Vestuario',
@@ -42,9 +41,7 @@ const SERVICIOS_DISPONIBLES = [
 const RE_INSTAGRAM = /^[A-Za-z0-9_.]{1,30}$/;
 const RE_WHATSAPP = /^\d{8,15}$/;
 
-// 5 intentos cada 15 minutos por IP. No distingue si el intento fue con
-// un email que existe o no: alguien que prueba fuerza bruta igual se
-// queda sin intentos aunque esté adivinando emails al mismo tiempo.
+// 5 intentos de login cada 15 minutos por IP
 const limitadorLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -53,9 +50,7 @@ const limitadorLogin = rateLimit({
   message: { error: 'Demasiados intentos. Probá de nuevo en unos minutos.' },
 });
 
-// -----------------------------------------------------------------
-// Login (sin requireAdmin: todavía no hay sesión)
-// -----------------------------------------------------------------
+// --- Login ---
 router.post('/login', limitadorLogin, async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
@@ -71,9 +66,7 @@ router.post('/login', limitadorLogin, async (req, res) => {
     );
     const admin = rows[0];
 
-    // Comparamos siempre contra ALGÚN hash bcrypt, exista o no el admin,
-    // para que el tiempo de respuesta sea parecido en los dos casos y no
-    // delate, por la demora, qué emails están registrados.
+    // Siempre se compara contra un hash, exista o no el email (mismo tiempo de respuesta)
     const hashAComparar = admin ? admin.password_hash : await hashFalso();
     const coincide = await verificarPassword(password, hashAComparar);
 
@@ -115,9 +108,7 @@ router.get('/yo', async (req, res) => {
   }
 });
 
-// Lista simple de canchas del club, para el selector del formulario de
-// turnos fijos (la agenda y el resto de las rutas no la necesitan: ya
-// traen sus propios datos de cancha).
+// Canchas del club, para el formulario de turnos fijos
 router.get('/canchas', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT id, nombre FROM canchas WHERE club_id = $1 AND activa ORDER BY id', [
@@ -130,9 +121,7 @@ router.get('/canchas', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Datos del club (pestaña Ajustes del panel)
-// -----------------------------------------------------------------
+// --- Datos del club (Ajustes) ---
 router.get('/club-info', async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -197,20 +186,10 @@ router.put('/club-info', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Agenda del día
-// -----------------------------------------------------------------
+// --- Agenda del día ---
 
-// Igual que la grilla de /disponibilidad (horarios de apertura +
-// duración de cada cancha) pero sin ocultar los turnos que ya pasaron,
-// y trayendo los datos del cliente cuando el turno está ocupado: por un
-// turno fijo (tabla turnos_fijos, condicionTurnoFijo) o por una reserva
-// (tabla reservas, 'online' | 'manual' | 'bloqueo' según su origen).
-//
-// El segundo LEFT JOIN (tf_lib) es el mismo turno fijo pero visto al
-// revés: solo pega cuando ESE día puntual tiene una excepción cargada,
-// o sea cuando el fijo normalmente ocuparía el turno pero lo liberaron.
-// Así la agenda puede mostrar "Fijo liberado" en vez de un libre común.
+// Grilla del día con lo que ocupa cada turno (fijo o reserva).
+// tf_lib = turno fijo liberado ese día por una excepción.
 const SQL_AGENDA = `
   SELECT c.id AS cancha_id, c.nombre AS cancha_nombre,
          to_char(s.inicio AT TIME ZONE cl.zona_horaria, 'HH24:MI') AS hora,
@@ -224,10 +203,12 @@ const SQL_AGENDA = `
          r.origen AS reserva_origen,
          r.cliente_nombre AS reserva_nombre,
          r.cliente_tel AS reserva_tel,
+         r.cliente_email AS reserva_email,
          r.vence_en AS reserva_vence_en,
          r.monto_total AS reserva_monto_total,
          r.tipo_pago AS reserva_tipo_pago,
-         r.monto_pagado AS reserva_monto_pagado
+         r.monto_pagado AS reserva_monto_pagado,
+         r.pago_estado AS reserva_pago_estado
   FROM canchas c
   JOIN clubes cl ON cl.id = c.club_id
   JOIN horarios_apertura h
@@ -257,13 +238,17 @@ router.get('/agenda', async (req, res) => {
 
   try {
     await liberarVencidas();
-    const { rows } = await pool.query(SQL_AGENDA, [fecha, req.admin.clubId]);
+    const [{ rows }, { rows: reembolsosPendientes }] = await Promise.all([
+      pool.query(SQL_AGENDA, [fecha, req.admin.clubId]),
+      pool.query(SQL_REEMBOLSOS_PENDIENTES, [req.admin.clubId]),
+    ]);
 
     const ahora = new Date();
     const canchas = [];
     const porId = new Map();
     let reservas = 0;
     let libres = 0;
+    let seniasCobradas = 0; // solo pagos aprobados
 
     for (const r of rows) {
       if (!porId.has(r.cancha_id)) {
@@ -295,14 +280,15 @@ router.get('/agenda', async (req, res) => {
           reserva_estado: r.reserva_estado,
           cliente_nombre: r.reserva_nombre,
           cliente_tel: r.reserva_tel,
+          cliente_email: r.reserva_email,
           vence_en: r.reserva_vence_en,
           monto_total: r.reserva_monto_total,
           tipo_pago: r.reserva_tipo_pago,
           monto_pagado: r.reserva_monto_pagado,
+          pago_estado: r.reserva_pago_estado,
         };
-        // Un bloqueo no es una reserva de un cliente, así que no cuenta
-        // ni como "reservas hoy" ni como turno libre.
         if (r.reserva_origen !== 'bloqueo') reservas++;
+        if (r.reserva_pago_estado === 'aprobado') seniasCobradas += r.reserva_monto_pagado;
       } else if (r.turno_fijo_liberado_id) {
         turno = {
           hora: r.hora,
@@ -322,10 +308,9 @@ router.get('/agenda', async (req, res) => {
 
     res.json({
       fecha,
-      // Mercado Pago todavía no está integrado: no hay forma de saber
-      // cuánto se cobró en señas, así que va en null a propósito.
-      resumen: { reservas, senias_cobradas: null, libres },
+      resumen: { reservas, senias_cobradas: seniasCobradas, libres },
       canchas,
+      reembolsos_pendientes: reembolsosPendientes,
     });
   } catch (err) {
     console.error(err);
@@ -333,9 +318,52 @@ router.get('/agenda', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Carga manual de una reserva (la que llega por WhatsApp o en persona)
-// -----------------------------------------------------------------
+// --- Reembolsos pendientes (de cualquier fecha) ---
+const SQL_REEMBOLSOS_PENDIENTES = `
+  SELECT r.id AS reserva_id, r.cliente_nombre, r.cliente_tel, r.mp_order_id,
+         CASE WHEN r.tipo_pago = 'senia' THEN r.monto_senia ELSE r.monto_total END AS monto,
+         c.nombre AS cancha_nombre,
+         to_char(lower(r.horario) AT TIME ZONE cl.zona_horaria, 'YYYY-MM-DD') AS fecha,
+         to_char(lower(r.horario) AT TIME ZONE cl.zona_horaria, 'HH24:MI') AS hora
+  FROM reservas r
+  JOIN canchas c ON c.id = r.cancha_id
+  JOIN clubes cl ON cl.id = c.club_id
+  WHERE c.club_id = $1 AND r.pago_estado = 'reembolso_pendiente'
+  ORDER BY r.id
+`;
+
+router.post('/reservas/:id/reintentar-reembolso', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Id inválido' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.id FROM reservas r
+       JOIN canchas c ON c.id = r.cancha_id
+       WHERE r.id = $1 AND c.club_id = $2 AND r.pago_estado = 'reembolso_pendiente'`,
+      [id, req.admin.clubId]
+    );
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'No encontramos ese reembolso pendiente' });
+    }
+
+    await verificarPago(id);
+    const { rows: despues } = await pool.query('SELECT pago_estado FROM reservas WHERE id = $1', [id]);
+    if (despues[0].pago_estado !== 'reembolsado') {
+      return res.status(502).json({
+        error: 'Mercado Pago no aceptó la devolución. Probá más tarde o hacela desde tu cuenta de Mercado Pago.',
+      });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+// --- Reserva cargada a mano ---
 router.post('/reservas', async (req, res) => {
   const { cancha_id, fecha, hora, cliente_nombre, cliente_tel } = req.body || {};
 
@@ -364,9 +392,6 @@ router.post('/reservas', async (req, res) => {
     await liberarVencidas();
 
     const resultado = await conLockDeCancha(cancha_id, async (client) => {
-      // buscarTurno ya filtra por club_id, así que un admin nunca puede
-      // cargar una reserva en una cancha que no es de su club: si manda
-      // un cancha_id ajeno, esto da "no existe" igual que si no existiera.
       const turno = await buscarTurno(fecha, cancha_id, req.admin.clubId, hora, client);
       if (!turno) {
         throw new ErrorTurno('Ese turno no existe', 400);
@@ -378,9 +403,6 @@ router.post('/reservas', async (req, res) => {
         throw new ErrorTurno('Ese turno ya está tomado', 409);
       }
 
-      // tipo_pago queda NULL (las cargas manuales no pasan por la
-      // elección de seña/total), pero el total sí se guarda, con el
-      // precio de la cancha en este momento.
       const insert = await client.query(
         `INSERT INTO reservas (cancha_id, horario, estado, origen, cliente_nombre, cliente_tel, monto_total)
          VALUES ($1, tstzrange($2, $3), 'confirmada', 'manual', $4, $5, $6)
@@ -403,9 +425,7 @@ router.post('/reservas', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Bloquear un turno (cancha en mantenimiento, torneo, etc.)
-// -----------------------------------------------------------------
+// --- Bloquear un turno ---
 router.post('/bloqueos', async (req, res) => {
   const { cancha_id, fecha, hora, motivo } = req.body || {};
 
@@ -438,8 +458,7 @@ router.post('/bloqueos', async (req, res) => {
         throw new ErrorTurno('Ese turno ya está tomado', 409);
       }
 
-      // El motivo del bloqueo se guarda en cliente_nombre: no hay un
-      // cliente real, pero así se ve en la agenda sin agregar una columna.
+      // El motivo va en cliente_nombre
       const insert = await client.query(
         `INSERT INTO reservas (cancha_id, horario, estado, origen, cliente_nombre)
          VALUES ($1, tstzrange($2, $3), 'confirmada', 'bloqueo', $4)
@@ -462,9 +481,7 @@ router.post('/bloqueos', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Cancelar una reserva (online, manual o un bloqueo)
-// -----------------------------------------------------------------
+// --- Cancelar una reserva ---
 router.post('/reservas/:id/cancelar', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
@@ -472,8 +489,6 @@ router.post('/reservas/:id/cancelar', async (req, res) => {
   }
 
   try {
-    // El JOIN con canchas filtrado por club_id es lo que impide que un
-    // admin cancele una reserva de otro club aunque adivine su id.
     const { rows } = await pool.query(
       `SELECT r.id, r.estado, lower(r.horario) AS inicio
        FROM reservas r
@@ -498,9 +513,7 @@ router.post('/reservas/:id/cancelar', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Turnos fijos
-// -----------------------------------------------------------------
+// --- Turnos fijos ---
 router.get('/turnos-fijos', async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -562,11 +575,6 @@ router.post('/turnos-fijos', async (req, res) => {
   }
 
   try {
-    // Mismo lock que usan las reservas y los bloqueos: mientras se
-    // valida y se crea este turno fijo, nadie más puede insertar una
-    // reserva en esta cancha, así los dos chequeos (choque con otro
-    // fijo, choque con reservas existentes) ven el estado real y no se
-    // puede colar nada entre el chequeo y el insert.
     const resultado = await conLockDeCancha(cancha_id, async (client) => {
       const { rows: canchaRows } = await client.query(
         'SELECT id FROM canchas WHERE id = $1 AND club_id = $2 AND activa',
@@ -576,11 +584,7 @@ router.post('/turnos-fijos', async (req, res) => {
         throw new ErrorTurno('Esa cancha no existe', 400);
       }
 
-      // Otro turno fijo activo en la misma cancha/día/hora, pero solo
-      // es choque real si sus vigencias se superponen en el tiempo:
-      // A.desde <= B.hasta (o B no tiene fin) y B.desde <= A.hasta (o A
-      // no tiene fin). Con 'infinity' para "sin fin" evita tener que
-      // repetir la comparación con OR por cada lado NULL.
+      // Otro fijo en la misma cancha/día/hora con vigencia superpuesta
       const { rows: choqueRows } = await client.query(
         `SELECT id FROM turnos_fijos
          WHERE cancha_id = $1 AND dia_semana = $2 AND hora_inicio = $3 AND activo
@@ -592,10 +596,7 @@ router.post('/turnos-fijos', async (req, res) => {
         throw new ErrorTurno('Ya hay un turno fijo en ese horario que se superpone con estas fechas', 409);
       }
 
-      // El chequeo que pedía este cambio: si ya hay reservas de
-      // jugadores (u otras cargas) en ese horario para fechas futuras
-      // dentro de la vigencia, no se puede crear el fijo sin que el
-      // dueño las vea primero.
+      // Reservas futuras que chocan con el fijo
       const conflictos = await buscarConflictosFijo(
         { canchaId: cancha_id, diaSemana: dia_semana, horaInicio: hora_inicio, fechaDesde: fecha_desde, fechaHasta: hasta },
         client
@@ -648,9 +649,7 @@ router.post('/turnos-fijos/:id/desactivar', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------
-// Excepciones: liberar (o volver a ocupar) una fecha puntual de un fijo
-// -----------------------------------------------------------------
+// --- Excepciones: liberar o volver a ocupar una fecha de un fijo ---
 router.post('/turnos-fijos/:id/excepciones', async (req, res) => {
   const id = Number(req.params.id);
   const { fecha, motivo } = req.body || {};
@@ -743,10 +742,6 @@ router.post('/turnos-fijos/:id/excepciones/:fecha/deshacer', async (req, res) =>
       return res.status(404).json({ error: 'No encontramos esa excepción' });
     }
 
-    // Mismo lock que al crear una reserva o un fijo: entre que se
-    // chequea si alguien reservó el turno liberado y se borra la
-    // excepción (lo que lo vuelve a tapar), no puede colarse una
-    // reserva nueva sin que la veamos.
     await conLockDeCancha(tf.cancha_id, async (client) => {
       const turno = await buscarTurno(fecha, tf.cancha_id, req.admin.clubId, tf.hora_inicio, client);
       if (turno && (await hayReservaActiva(tf.cancha_id, turno.inicio, turno.fin, client))) {
@@ -765,9 +760,7 @@ router.post('/turnos-fijos/:id/excepciones/:fecha/deshacer', async (req, res) =>
   }
 });
 
-// -----------------------------------------------------------------
-// Ajustes: precio por cancha y porcentaje de seña del club
-// -----------------------------------------------------------------
+// --- Ajustes: precios y porcentaje de seña ---
 router.get('/ajustes', async (req, res) => {
   try {
     const [{ rows: canchas }, { rows: clubRows }] = await Promise.all([
@@ -799,9 +792,7 @@ router.put('/ajustes/precios', async (req, res) => {
   }
 
   try {
-    // Validamos que TODAS las canchas sean del club antes de tocar
-    // ninguna, para no dejar a medio guardar si una viene de otro club
-    // (o no existe).
+    // Todas las canchas tienen que ser del club antes de tocar ninguna
     const { rows: propias } = await pool.query('SELECT id FROM canchas WHERE club_id = $1', [req.admin.clubId]);
     const idsPropios = new Set(propias.map((c) => c.id));
     for (const item of precios) {

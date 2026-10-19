@@ -1,12 +1,6 @@
-/* Estilos propios del panel del dueño. Reusa las variables, la tipografía
-   y los componentes de estilos.css (tarjeta, campo, boton, aviso-error,
-   filas/fila, letra-chica, barra-fija...) y solo agrega lo que el panel
-   necesita y la app del jugador no tiene: el header oscuro, la grilla de
-   turnos, la hoja inferior y la barra de pestañas. */
+/* Estilos del panel del dueño (usa las variables y componentes de estilos.css). */
 
 :root {
-  /* Header oscuro del panel: no es el verde de marca, así que se
-     distingue de un vistazo de la app del jugador. */
   --adm-oscuro: #122420;
   --adm-gris-claro: #EDEFEE;
   --adm-bloqueo: #3A4249;
@@ -16,7 +10,7 @@
    Pantalla de carga inicial (mientras se consulta /admin/yo)
    =========================================================== */
 .adm-cargando-pantalla {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,7 +20,7 @@
    Login
    =========================================================== */
 .adm-login-fondo {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,8 +279,7 @@
   min-height: 56px;
 }
 
-/* Turno que ya empezó: se ve, pero atenuado. Si además es un libre
-   pasado, ni siquiera es un <button> (ver Agenda.jsx). */
+/* Turno que ya empezó */
 .adm-turno--pasado {
   opacity: 0.5;
 }
@@ -323,7 +316,8 @@
    =========================================================== */
 .adm-hoja-fondo {
   position: fixed;
-  inset: 0;
+  /* Empieza debajo del cartel de demo (0 si no está) */
+  inset: var(--alto-cartel-demo) 0 0;
   background: rgba(10, 20, 17, 0.45);
   display: flex;
   align-items: flex-end;
@@ -486,8 +480,7 @@
   list-style: none;
 }
 
-/* Aviso dentro de la hoja de turno cuando la fecha tocada está
-   liberada por una excepción de un fijo */
+/* Aviso de fecha liberada de un fijo */
 .adm-nota-liberado {
   background: var(--fondo);
   border-radius: 10px;
@@ -513,8 +506,6 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Mismo truco que .barra-fija-interior: la franja ocupa todo el ancho
-   de la pantalla, pero su contenido queda centrado y angosto. */
 .adm-tabs-interior {
   max-width: var(--ancho-app);
   margin: 0 auto;
@@ -561,14 +552,11 @@
   margin-top: 6px;
 }
 
-/* El botón de cerrar sesión de Ajustes queda separado del formulario,
-   no como otra acción más del guardado. */
 .contenido > .adm-boton-secundario {
   margin-top: 8px;
 }
 
-/* Checkboxes de servicios (sección "Datos del club" de Ajustes): una
-   lista fija, nunca texto libre. */
+/* Checkboxes de servicios (Ajustes) */
 .adm-servicios-grilla {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -593,18 +581,7 @@
 
 /* ===========================================================================
    RESPONSIVE — tablet (768px+) y escritorio (1024px+)
-   ===========================================================================
-   Mismo criterio que estilos.css: todo lo de arriba es la versión de
-   celular, sin tocar. Acá abajo solo hay clases nuevas, o reglas para
-   clases existentes escritas DENTRO de un @media.
-
-   .adm-shell / .adm-main / .adm-agenda-cabecera / .adm-grilla-scroll
-   son contenedores nuevos que en celular no generan caja propia
-   (display: contents): sus hijos quedan como si fueran hijos directos
-   de donde ya estaban, en el mismo orden de siempre. .adm-sidebar y
-   .adm-turno-extra son contenido nuevo que en celular no se muestra
-   (display: none), porque esa función la siguen cumpliendo la barra de
-   pestañas de abajo y el subtítulo del turno, como hasta ahora.
+   Lo de arriba es la versión de celular.
    =========================================================================== */
 
 :root {
@@ -629,19 +606,14 @@
   display: contents;
 }
 
-/* -----------------------------------------------------------
-   Tablet: 768px a 1023px — misma estructura que en celular, pero la
-   agenda (y el resto) aprovechan el #root más ancho de estilos.css.
-   ----------------------------------------------------------- */
+/* --- Tablet: 768px a 1023px --- */
 @media (min-width: 768px) {
   .adm-login-tarjeta {
     max-width: 420px;
   }
 }
 
-/* -----------------------------------------------------------
-   Escritorio: 1024px en adelante
-   ----------------------------------------------------------- */
+/* --- Escritorio: 1024px en adelante --- */
 @media (min-width: 1024px) {
   /* La barra de pestañas de abajo la reemplaza la barra lateral. */
   .adm-tabs {
@@ -657,7 +629,7 @@
     display: flex;
     flex-direction: column;
     position: fixed;
-    top: 0;
+    top: var(--alto-cartel-demo);
     left: 0;
     bottom: 0;
     width: var(--adm-sidebar-ancho);
@@ -671,7 +643,7 @@
   .adm-main {
     display: block;
     position: fixed;
-    top: 0;
+    top: var(--alto-cartel-demo);
     right: 0;
     bottom: 0;
     left: var(--adm-sidebar-ancho);
@@ -754,11 +726,7 @@
     background: rgba(255, 255, 255, 0.1);
   }
 
-  /* --- Agenda y grilla comparten un mismo ancho máximo, centrado
-     dentro de .adm-main (que ocupa todo el espacio a la derecha de la
-     barra lateral, que sigue fija). En pantallas muy anchas evita que
-     la cabecera y la grilla queden separadas por un hueco enorme; en
-     pantallas angostas de escritorio evita que la cabecera se corte. */
+  /* Agenda: ancho máximo centrado */
   .adm-ancho {
     display: block;
     max-width: 1280px;
@@ -766,19 +734,13 @@
     width: 100%;
   }
 
-  /* --- Agenda: una sola cabecera oscura, con la fecha + flechas a la
-     izquierda y las tarjetas de resumen a la derecha. flex-wrap: si no
-     entran los dos en una fila, las tarjetas pasan a una fila propia
-     en vez de cortarse o salirse de la pantalla. */
+  /* Agenda: cabecera con la fecha a la izquierda y el resumen a la derecha */
   .adm-agenda-cabecera {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 16px 24px;
-    /* Mismo inset horizontal que el padding de .contenido (24px), para
-       que el borde de la cabecera quede alineado con el de la grilla
-       de abajo en vez de sobresalirle. */
     margin: 0 24px 20px;
     background: var(--adm-oscuro);
     color: var(--blanco);
@@ -786,14 +748,6 @@
     padding: 18px 24px;
   }
 
-  /* Ya no es ella la que pinta el fondo oscuro (lo pinta
-     .adm-agenda-cabecera, para poder repartir el espacio con
-     .adm-dia-nav): acá queda solo como contenedor de las tarjetas.
-     .adm-cabecera (no .adm-stats, que es nieta de .adm-agenda-cabecera
-     y no un ítem flex suyo) es quien tiene que poder achicarse: con
-     flex-basis 440px y min-width:0 se achica antes de desbordar, y si
-     ni así entra al lado de .adm-dia-nav, flex-wrap la manda a una
-     fila propia (ver .adm-agenda-cabecera). */
   .adm-cabecera {
     flex: 0 1 440px;
     min-width: 0;
@@ -803,8 +757,7 @@
     border-radius: 0;
   }
 
-  /* El nombre del club y el botón de cerrar sesión ya están en la
-     barra lateral: no hace falta repetirlos acá. */
+  /* Ya están en la barra lateral */
   .adm-cabecera-marca {
     display: none;
   }
@@ -819,12 +772,6 @@
     padding: 12px 14px;
   }
 
-  /* "order" la manda primera dentro de .adm-agenda-cabecera, aunque en
-     el HTML sigue después de .adm-cabecera (así en celular, donde esta
-     regla no existe, el orden visual de siempre no cambia). Ya no es
-     una tarjeta blanca flotante: pasa a vivir adentro de la cabecera
-     oscura, así que se le saca el fondo/sombra/radio y se recolorean
-     sus textos e íconos para que se lean sobre el verde oscuro. */
   .adm-dia-nav {
     order: -1;
     flex: 0 1 auto;
@@ -870,8 +817,7 @@
     background: rgba(255, 255, 255, 0.12);
   }
 
-  /* --- Grilla de turnos: ancho disponible + encabezado y columna de
-     horas fijos al hacer scroll --- */
+  /* Grilla: encabezado y columna de horas fijos al hacer scroll */
   .adm-grilla-scroll {
     display: block;
     max-height: calc(100vh - 280px);
@@ -885,18 +831,9 @@
 
   .adm-grilla-encabezado,
   .adm-grilla-fila {
-    /* Entre 220 y 360px por cancha: ni se aprietan con pocas canchas
-       ni quedan vacías estirándose a lo ancho. */
+    /* 220 a 360px por cancha */
     grid-template-columns: 64px repeat(var(--adm-columnas, 2), minmax(220px, 360px));
-    /* Sin esto, una fila-grid con "width: auto" se achica para entrar
-       en el contenedor y las columnas quedan por debajo del mínimo en
-       vez de activar el scroll horizontal. Con "max-content" la fila
-       mide lo que necesitan sus columnas (64px + hasta 360px por
-       cancha) y es .adm-grilla-scroll el que decide si entra entero o
-       scrollea. "justify-content: start" evita que, si sobra ancho
-       (pocas canchas), el navegador reparta ese sobrante estirando las
-       columnas más allá de los 360px: la grilla queda pegada a la
-       izquierda y el resto del ancho se deja vacío, como pidieron. */
+    /* max-content: si no entra, scroll horizontal */
     width: max-content;
     min-width: 100%;
     justify-content: start;
@@ -943,10 +880,7 @@
     margin-top: 2px;
   }
 
-  /* Línea de "hora actual": una línea fina que cruza la grilla a la
-     altura de ahora mismo, solo cuando se está viendo el día de hoy
-     (Agenda.jsx calcula "top" midiendo las filas reales). Arranca
-     después de la columna de horas (64px) para no tapar la etiqueta. */
+  /* Línea de "hora actual" (top lo calcula Agenda.jsx) */
   .adm-linea-ahora {
     display: block;
     position: absolute;
@@ -981,12 +915,12 @@
     max-width: 420px;
     height: 100%;
     max-height: 100%;
+    padding-top: 24px;
     border-radius: 0;
     box-shadow: -8px 0 24px rgba(16, 36, 28, 0.18);
   }
 
-  /* --- Turnos fijos y Ajustes: contenido más angosto y formularios
-     más cómodos --- */
+  /* Turnos fijos y Ajustes */
   .contenido-angosto {
     max-width: 720px;
     margin-left: auto;
@@ -1002,4 +936,66 @@
   .contenido-angosto .campo select {
     min-height: 52px;
   }
+}
+
+/* ===========================================================
+   Pagos para devolver (reembolso pendiente)
+   =========================================================== */
+.adm-reembolsos {
+  background: #FDECEC;
+  border: 1.5px solid #E8A3A3;
+  border-radius: 14px;
+  padding: 14px;
+  color: #7A1F1F;
+}
+
+.adm-reembolsos-titulo {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.adm-reembolsos-texto {
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.adm-reembolsos-lista {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adm-reembolso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--blanco);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.adm-reembolso-nombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--texto);
+}
+
+.adm-reembolso-detalle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris);
+  margin-top: 2px;
+}
+
+.adm-reembolsos-error {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-top: 8px;
 }

@@ -4,14 +4,15 @@ import { formatearPrecio, formatearMonto } from '../precios.js';
 import { tituloLargo, sumarMinutos } from '../fechas.js';
 import { IconoCalendario, IconoFlechaAtras } from '../componentes/Iconos.jsx';
 
-// Mismas reglas que valida la API, repetidas acá para avisar al toque
-// sin esperar el viaje de ida y vuelta.
+// Mismas reglas que valida la API
 const TELEFONO_OK = /^\+?[\d\s-]{8,20}$/;
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Pantalla 2: forma de pago, datos del jugador y confirmación.
 export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorcentaje, enviando, error, onVolver, onReservar }) {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [email, setEmail] = useState('');
   const [tipoPago, setTipoPago] = useState('senia');
   const [errores, setErrores] = useState({});
 
@@ -21,21 +22,29 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
     const nuevos = {};
     if (nombre.trim().length < 2) nuevos.nombre = 'Escribí tu nombre y apellido.';
     if (!TELEFONO_OK.test(telefono.trim())) nuevos.telefono = 'Escribí un WhatsApp válido, ej: 11 1234 5678.';
+    if (!EMAIL_OK.test(email.trim())) nuevos.email = 'Escribí un email válido, ej: juan@gmail.com.';
     setErrores(nuevos);
 
     if (Object.keys(nuevos).length === 0) {
-      onReservar({ cliente_nombre: nombre.trim(), cliente_tel: telefono.trim(), tipo_pago: tipoPago });
+      onReservar({
+        cliente_nombre: nombre.trim(),
+        cliente_tel: telefono.trim(),
+        cliente_email: email.trim(),
+        tipo_pago: tipoPago,
+      });
     }
   }
 
-  // Esto es solo para mostrar algo antes de reservar: el monto que
-  // vale de verdad es el que devuelve la API al confirmar (ver
-  // TurnoConfirmado), calculado del lado del servidor con el precio y
-  // el porcentaje que estén guardados en ese momento.
+  // Solo para mostrar; el monto real lo calcula el servidor
   const total = Number(cancha.precio) || 0;
   const senia = Math.round((total * seniaPorcentaje) / 100);
   const resto = total - senia;
   const aPagarAhora = tipoPago === 'senia' ? senia : total;
+  const textoBoton = enviando
+    ? 'Yendo a Mercado Pago…'
+    : tipoPago === 'senia'
+      ? 'Pagar seña con Mercado Pago'
+      : 'Pagar total con Mercado Pago';
 
   return (
     <>
@@ -48,14 +57,9 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
         </div>
 
         <div className="contenido">
-          {/* TODO: cuando entre Mercado Pago, acá va el aviso naranja
-              "Te guardamos el turno 10:00 min mientras pagás la seña".
-              Hoy no se muestra porque el turno recién se retiene al reservar. */}
+          {/* TODO: aviso "Te guardamos el turno 15:00 min mientras pagás" */}
 
-          {/* .p2-layout/.p2-principal/.p2-lateral: en celular y tablet
-              son transparentes (display: contents, ver estilos.css),
-              así que las dos section.tarjeta quedan en el mismo orden
-              de siempre. Desde 1024px arman dos columnas. */}
+          {/* Dos columnas desde 1024px */}
           <div className="p2-layout">
             <div className="p2-principal">
               <section className="tarjeta">
@@ -174,6 +178,31 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
                       </p>
                     )}
                   </div>
+
+                  <div className="campo">
+                    <label htmlFor="email">Email</label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="juan@gmail.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      aria-invalid={Boolean(errores.email)}
+                      aria-describedby={errores.email ? 'error-email' : 'ayuda-email'}
+                    />
+                    {errores.email ? (
+                      <p className="campo-error" id="error-email">
+                        {errores.email}
+                      </p>
+                    ) : (
+                      <p className="letra-chica" id="ayuda-email">
+                        Te mandamos el comprobante cuando se confirme el pago.
+                      </p>
+                    )}
+                  </div>
                 </form>
               </section>
 
@@ -183,19 +212,18 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
                 </p>
               )}
 
-              <p className="letra-chica">
+              <p className="letra-chica-1">
                 Cancelando con más de [X] horas de anticipación te devolvemos la seña.
               </p>
 
-              {/* Mismo form, mismo envío: en celular y tablet este botón
-                  no se ve (la barra fija de abajo hace lo mismo). */}
+              {/* Solo escritorio (en celular está la barra fija) */}
               <button
                 type="submit"
                 form="form-datos"
                 className="boton boton-azul p2-boton-escritorio"
                 disabled={enviando}
               >
-                {enviando ? 'Reservando…' : 'Reservar turno'}
+                {textoBoton}
               </button>
             </div>
           </div>
@@ -208,10 +236,8 @@ export default function ConfirmarReserva({ club, fecha, hora, cancha, seniaPorce
             <span>{tipoPago === 'senia' ? 'Seña a pagar ahora' : 'Total a pagar ahora'}</span>
             <strong>{formatearPrecio(aPagarAhora)}</strong>
           </div>
-          {/* Más adelante este botón abre el checkout de Mercado Pago.
-              Por ahora hace el POST y retiene el turno 10 minutos. */}
           <button type="submit" form="form-datos" className="boton boton-azul" disabled={enviando}>
-            {enviando ? 'Reservando…' : 'Reservar turno'}
+            {textoBoton}
           </button>
         </div>
       </div>

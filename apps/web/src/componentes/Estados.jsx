@@ -1,5 +1,4 @@
-// Los tres estados que puede mostrar la lista de turnos cuando todavía
-// no hay nada para elegir.
+// Cargando, error y sin turnos.
 
 export function Cargando() {
   return (

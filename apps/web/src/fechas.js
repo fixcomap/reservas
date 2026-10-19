@@ -1,6 +1,4 @@
-// Todo lo que tenga que ver con días y horas pasa por acá.
-// La regla: el usuario siempre ve la hora de Argentina, sin importar
-// dónde esté configurada su computadora.
+// Fechas y horas, siempre en hora de Argentina.
 
 export const ZONA = 'America/Argentina/Buenos_Aires';
 
@@ -12,8 +10,7 @@ const MESES_LARGOS = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
-// "Hoy" en Argentina como AAAA-MM-DD. El locale en-CA justamente
-// formatea las fechas en ese orden, así que sale listo para la API.
+// "Hoy" en Argentina como AAAA-MM-DD
 export function hoyEnArgentina() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: ZONA,
@@ -23,16 +20,13 @@ export function hoyEnArgentina() {
   }).format(new Date());
 }
 
-// Partimos el texto a mano y hacemos la cuenta en UTC para que no se
-// corra un día por el horario de verano ni por la zona del navegador.
+// AAAA-MM-DD -> Date en UTC (evita corrimientos por zona horaria)
 function partes(iso) {
   const [anio, mes, dia] = iso.split('-').map(Number);
   return new Date(Date.UTC(anio, mes - 1, dia));
 }
 
-// Suma (o resta, con cantidad negativa) días a una fecha AAAA-MM-DD.
-// La usa proximosSieteDias acá abajo, y también la agenda del panel
-// para las flechas de "día anterior / día siguiente".
+// Suma (o resta) días a una fecha AAAA-MM-DD
 export function sumarDias(iso, cantidad) {
   const fecha = partes(iso);
   fecha.setUTCDate(fecha.getUTCDate() + cantidad);
@@ -51,8 +45,7 @@ export function proximosSieteDias() {
       etiqueta: i === 0 ? 'HOY' : DIAS_CORTOS[fecha.getUTCDay()],
       numero: String(fecha.getUTCDate()),
       mes: MESES_CORTOS[fecha.getUTCMonth()],
-      // Las tres líneas del chip juntas se leen "HOY15OCT" en un lector
-      // de pantalla, así que le damos un nombre en castellano normal.
+      // Nombre para lectores de pantalla
       nombreAccesible: i === 0 ? `Hoy, ${tituloLargo(iso)}` : tituloLargo(iso),
     };
   });
@@ -78,55 +71,42 @@ export function sumarMinutos(hora, minutos) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-// Día de la semana (0 = domingo, igual que EXTRACT(DOW) de Postgres)
-// de una fecha AAAA-MM-DD. La usa la agenda del panel para armar el
-// "todos los jue" de los turnos fijos.
+// Día de la semana de una fecha AAAA-MM-DD (0 = domingo)
 export function diaDeLaSemana(iso) {
   return partes(iso).getUTCDay();
 }
 
-// "Hoy · jueves 15 oct" (o sin el "Hoy · " si no es hoy). Formato del
-// encabezado de la agenda del panel.
+// "Hoy · jueves 15 oct" (encabezado de la agenda)
 export function tituloAgenda(iso) {
   const fecha = partes(iso);
   const dia = `${DIAS_LARGOS[fecha.getUTCDay()].toLowerCase()} ${fecha.getUTCDate()} ${MESES_CORTOS[fecha.getUTCMonth()].toLowerCase()}`;
   return iso === hoyEnArgentina() ? `Hoy · ${dia}` : dia;
 }
 
-// La próxima fecha (AAAA-MM-DD) que cae en ese día de la semana. Si hoy
-// mismo es ese día, devuelve hoy. La usa el formulario de turno fijo
-// para proponer la fecha de inicio apenas se elige el día.
+// Próxima fecha que cae en ese día de la semana (hoy incluido)
 export function proximaFecha(diaSemana) {
   const hoy = hoyEnArgentina();
   const delta = (diaSemana - diaDeLaSemana(hoy) + 7) % 7;
   return sumarDias(hoy, delta);
 }
 
-// "19/10", para mostrar una fecha AAAA-MM-DD en poco espacio (la
-// vigencia de un turno fijo, un conflicto, etc.)
+// "19/10"
 export function fechaCorta(iso) {
   const [, mes, dia] = iso.split('-');
   return `${dia}/${mes}`;
 }
 
-// "jue" a partir de un dia_semana de Postgres (0 = domingo). La usa el
-// panel para mostrar "Fijo · todos los jue" en los turnos fijos.
+// 4 -> "jue"
 export function nombreDiaCorto(diaSemana) {
   return DIAS_CORTOS[diaSemana].toLowerCase();
 }
 
-// "9:00" en vez de "09:00" (pero deja "24:00" como está: solo se le
-// saca el cero cuando sobra, nunca toca los dos puntos).
+// "09:00" -> "9:00"
 function sinCeroInicial(hora) {
   return hora.replace(/^0/, '');
 }
 
-// Agrupa los horarios de apertura (uno por día, 0 = domingo) en bloques
-// de días consecutivos con el mismo horario: [{ texto: "Lunes a
-// viernes 9:00 a 24:00" }, { texto: "Sábado y domingo 10:00 a 20:00" }].
-// El orden de agrupación empieza el lunes, como se nombran los horarios
-// comercialmente en Argentina. Un día sin horario cargado (el club no
-// abre ese día) corta el grupo y no aparece en el resultado.
+// Agrupa días seguidos con el mismo horario: "Lunes a viernes 9:00 a 24:00"
 export function agruparHorarios(horarios) {
   const orden = [1, 2, 3, 4, 5, 6, 0];
   const porDia = new Map(horarios.map((h) => [h.dia_semana, h]));
@@ -160,8 +140,7 @@ export function agruparHorarios(horarios) {
   });
 }
 
-// La API devuelve vence_en en UTC ("2026-10-15T21:59:43.177Z").
-// Acá lo pasamos a la hora que ve el jugador en Argentina.
+// Fecha UTC -> "HH:MM" en Argentina
 export function horaArgentina(fechaUtc) {
   return new Intl.DateTimeFormat('es-AR', {
     timeZone: ZONA,
