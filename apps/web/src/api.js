@@ -1,6 +1,9 @@
-// Llamadas a la API. Vite redirige /api a http://localhost:3000.
+// Llamadas a la API.
+// En local: /api, que Vite redirige a http://localhost:3000.
+// En producción: VITE_API_URL (ej: https://api-reservas.fixcomap.com).
+export const URL_API = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
-const BASE = '/api';
+const BASE = URL_API;
 
 // Error con el status HTTP (0 = sin respuesta)
 export class ErrorApi extends Error {

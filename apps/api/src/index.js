@@ -1,6 +1,10 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const cors = require('cors');
+const config = require('./config');
 const pool = require('./db');
+const { crearConfianzaProxy } = require('./proxy');
 const {
   buscarTurno,
   liberarVencidas,
@@ -17,13 +21,24 @@ const { webhookMercadoPago } = require('./webhookMercadoPago');
 const { enviarConfirmacion } = require('./mail');
 
 const app = express();
+app.disable('x-powered-by');
+
+// En producción: IP real del cliente detrás de Cloudflare + Google (ver proxy.js).
+// En local no hay proxies delante, así que no se confía en X-Forwarded-For.
+if (config.esProduccion) {
+  app.set('trust proxy', crearConfianzaProxy(config.proxiesConfiables));
+}
+
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
+// Pedidos con cookie solo desde el front
+app.use(cors({ origin: [config.frontUrl], credentials: true }));
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
-const PORT = process.env.API_PORT || 3000;
-const CLUB_ID = Number(process.env.CLUB_ID || 1);
+const PORT = config.puerto;
+const CLUB_ID = config.clubId;
 
 // Adónde vuelve el jugador después de pagar
-const FRONT_URL = (process.env.FRONT_URL || 'http://localhost:5173').replace(/\/$/, '');
+const FRONT_URL = config.frontUrl;
 
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -351,6 +366,14 @@ app.post('/webhooks/mercadopago', webhookMercadoPago);
 
 app.use('/admin', rutasAdmin);
 
-app.listen(PORT, () => {
-  console.log(`API escuchando en http://localhost:${PORT}`);
+const servidor = app.listen(PORT, () => {
+  console.log(`API escuchando en el puerto ${PORT} (${config.esProduccion ? 'producción' : 'desarrollo'})`);
+  console.log(`URL del webhook para cargar en Mercado Pago: ${config.urlWebhookMercadoPago}`);
+});
+
+// Cloud Run manda SIGTERM antes de apagar la instancia: termina lo que está en curso y cierra la base
+process.on('SIGTERM', () => {
+  servidor.close(() => {
+    pool.end().finally(() => process.exit(0));
+  });
 });

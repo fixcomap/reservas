@@ -10,7 +10,7 @@
    Pantalla de carga inicial (mientras se consulta /admin/yo)
    =========================================================== */
 .adm-cargando-pantalla {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20,7 +20,7 @@
    Login
    =========================================================== */
 .adm-login-fondo {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,7 +316,8 @@
    =========================================================== */
 .adm-hoja-fondo {
   position: fixed;
-  inset: 0;
+  /* Empieza debajo del cartel de demo (0 si no está) */
+  inset: var(--alto-cartel-demo) 0 0;
   background: rgba(10, 20, 17, 0.45);
   display: flex;
   align-items: flex-end;
@@ -628,7 +629,7 @@
     display: flex;
     flex-direction: column;
     position: fixed;
-    top: 0;
+    top: var(--alto-cartel-demo);
     left: 0;
     bottom: 0;
     width: var(--adm-sidebar-ancho);
@@ -642,7 +643,7 @@
   .adm-main {
     display: block;
     position: fixed;
-    top: 0;
+    top: var(--alto-cartel-demo);
     right: 0;
     bottom: 0;
     left: var(--adm-sidebar-ancho);
@@ -914,6 +915,7 @@
     max-width: 420px;
     height: 100%;
     max-height: 100%;
+    padding-top: 24px;
     border-radius: 0;
     box-shadow: -8px 0 24px rgba(16, 36, 28, 0.18);
   }

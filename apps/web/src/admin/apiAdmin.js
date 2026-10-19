@@ -1,7 +1,7 @@
 // Llamadas a /api/admin/*
-import { ErrorApi } from '../api.js';
+import { ErrorApi, URL_API } from '../api.js';
 
-const BASE = '/api/admin';
+const BASE = `${URL_API}/admin`;
 
 // Avisa a AdminApp cuando un pedido vuelve con 401
 let alPerderSesion = null;
@@ -13,6 +13,8 @@ async function pedir(ruta, opciones) {
   let respuesta;
   try {
     respuesta = await fetch(BASE + ruta, {
+      // Manda la cookie de sesión aunque la API esté en otro subdominio
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       ...opciones,
     });

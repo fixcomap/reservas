@@ -21,6 +21,9 @@
   /* Alto de la barra fija de abajo */
   --alto-barra: 86px;
 
+  /* Alto del cartel de demo de arriba (0 si no está) */
+  --alto-cartel-demo: 0px;
+
   /* Evita que el modo oscuro automático invierta los colores */
   color-scheme: light;
 }
@@ -76,13 +79,13 @@ button:disabled {
 #root {
   max-width: var(--ancho-app);
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   background: var(--fondo);
   position: relative;
 }
 
 .pantalla-scroll {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--alto-cartel-demo));
   display: flex;
   flex-direction: column;
 }
@@ -1298,7 +1301,7 @@ button:disabled {
   .p1-lateral {
     display: block;
     position: sticky;
-    top: 24px;
+    top: calc(24px + var(--alto-cartel-demo));
   }
 
   .p1-resumen .boton {
@@ -1322,7 +1325,7 @@ button:disabled {
 
   .p2-lateral {
     position: sticky;
-    top: 24px;
+    top: calc(24px + var(--alto-cartel-demo));
   }
 
   .p2-boton-escritorio {
@@ -1388,4 +1391,32 @@ button:disabled {
   .club-footer {
     padding: 28px 32px 32px;
   }
+}
+
+/* ===========================================================
+   Cartel "Versión de demostración" (VITE_DEMO=true)
+   =========================================================== */
+.con-cartel-demo {
+  --alto-cartel-demo: 24px;
+}
+
+.con-cartel-demo body {
+  padding-top: var(--alto-cartel-demo);
+}
+
+.cartel-demo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: var(--alto-cartel-demo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--texto);
+  color: var(--blanco);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }

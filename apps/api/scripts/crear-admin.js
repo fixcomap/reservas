@@ -70,7 +70,7 @@ function preguntarOculto(texto) {
 async function main() {
   const { rows: clubRows } = await pool.query('SELECT nombre FROM clubes WHERE id = $1', [CLUB_ID]);
   if (clubRows.length === 0) {
-    console.error(`No existe el club ${CLUB_ID}. Revisá db/migrations antes de crear un admin.`);
+    console.error(`No existe el club ${CLUB_ID}. Corré npm run migrar y después npm run demo (o cargá el club) antes de crear un admin.`);
     process.exitCode = 1;
     return;
   }

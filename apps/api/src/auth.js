@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
+const config = require('./config');
 
 const COSTO_BCRYPT = 12;
 
@@ -38,7 +39,7 @@ function opcionesCookie() {
     httpOnly: true,
     sameSite: 'strict',
     path: '/',
-    secure: process.env.NODE_ENV === 'production', // HTTPS solo en producción
+    secure: config.esProduccion, // HTTPS solo en producción
     maxAge: DURACION_SESION_MS,
   };
 }
@@ -59,7 +60,7 @@ async function destruirSesion(req, res) {
   if (token) {
     await pool.query('DELETE FROM sesiones WHERE token_hash = $1', [hashToken(token)]);
   }
-  res.clearCookie(NOMBRE_COOKIE, { path: '/' });
+  res.clearCookie(NOMBRE_COOKIE, opcionesCookie());
 }
 
 // Middleware de /admin/*: valida la sesión y deja el admin en req.admin
@@ -80,7 +81,7 @@ async function requireAdmin(req, res, next) {
 
     const sesion = rows[0];
     if (!sesion || new Date(sesion.expira_en) < new Date()) {
-      res.clearCookie(NOMBRE_COOKIE, { path: '/' });
+      res.clearCookie(NOMBRE_COOKIE, opcionesCookie());
       return res.status(401).json({ error: 'Sesión inválida o vencida' });
     }
 

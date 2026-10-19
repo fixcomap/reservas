@@ -17,7 +17,7 @@ class ErrorMP extends Error {
 
 function accessToken() {
   const token = process.env.MP_ACCESS_TOKEN;
-  if (!token) throw new ErrorMP('Falta MP_ACCESS_TOKEN en el .env', 0, 'sin_credenciales');
+  if (!token) throw new ErrorMP('Falta MP_ACCESS_TOKEN', 0, 'sin_credenciales');
   return token;
 }
 

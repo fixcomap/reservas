@@ -7,8 +7,6 @@ ALTER TABLE clubes
 ALTER TABLE canchas
   ADD CONSTRAINT canchas_precio_check CHECK (precio >= 0);
 
-UPDATE canchas SET precio = 20000 WHERE club_id = 1;
-
 ALTER TABLE reservas
   ADD COLUMN monto_total  int,
   ADD COLUMN monto_senia  int,

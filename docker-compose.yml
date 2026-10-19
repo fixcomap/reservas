@@ -10,7 +10,10 @@ services:
       - "5432:5432"
     volumes:
       - datos:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d
+      # Volumen vacío: aplica las migraciones y los datos de demo (db/docker-init.sh)
+      - ./db/migrations:/reservas-db/migrations:ro
+      - ./db/demo.sql:/reservas-db/demo.sql:ro
+      - ./db/docker-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
 
   # Mails de desarrollo: http://localhost:8025
   mailpit:

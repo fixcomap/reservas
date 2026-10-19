@@ -56,7 +56,10 @@ reservas/
 │       └── src/
 │           ├── pantallas/            elegir turno, confirmar, estado de la reserva
 │           └── admin/                panel del dueño
-├── db/migrations/                    001 a 009, se aplican en orden
+├── db/
+│   ├── migrations/                   esquema, se aplica en orden con npm run migrar
+│   ├── demo.sql                      datos de demostración (npm run demo)
+│   └── docker-init.sh                primer arranque del Postgres local
 ├── Bocetos/                          diseño de las pantallas
 └── docker-compose.yml                Postgres + Mailpit
 ```
@@ -81,6 +84,8 @@ Copiá `.env.example` a `.env` en la raíz y completalo:
 | `MAIL_FROM` | remitente, ej: `Club Demo <reservas@club.test>` |
 | `FRONT_URL` *(opcional)* | adonde vuelve el jugador después de pagar; por defecto `http://localhost:5173` |
 
+El resto (`DATABASE_URL`, `API_URL`, `NODE_ENV`, etc.) solo hace falta en producción: ver `.env.example` y [DEPLOY.md](DEPLOY.md).
+
 Para desarrollo con Mailpit: `SMTP_HOST=localhost` y `SMTP_PORT=1025`.
 
 > El `.env` está en `.gitignore`: nunca lo subas al repositorio.
@@ -91,10 +96,12 @@ Para desarrollo con Mailpit: `SMTP_HOST=localhost` y `SMTP_PORT=1025`.
 docker compose up -d
 ```
 
-La **primera vez** (volumen vacío), Postgres aplica solo todas las migraciones de `db/migrations`. Si la base ya existía, cada migración nueva se aplica a mano:
+La **primera vez** (volumen vacío), Postgres aplica solo todas las migraciones de `db/migrations` y carga los datos de demostración. Cuando aparece una migración nueva:
 
 ```powershell
-Get-Content db\migrations\009_email.sql | docker compose exec -T db psql -U reservas -d reservas
+cd apps\api
+npm.cmd run migrar     # aplica solo las pendientes y las anota en schema_migraciones
+npm.cmd run demo       # datos de demostración (solo si la base no tiene ningún club)
 ```
 
 ### 3. Instalar y arrancar
@@ -232,3 +239,9 @@ La API valida la firma (`x-signature`, HMAC-SHA256) y responde 401 si no coincid
 - Aviso de "te guardamos el turno 15:00 min" en la pantalla de confirmar.
 - Centro de notificaciones del panel.
 - Probar el webhook con un túnel y pasar a credenciales de producción.
+
+---
+
+## Producción
+
+Cloudflare Pages + Cloud Run + Neon: ver [DEPLOY.md](DEPLOY.md).

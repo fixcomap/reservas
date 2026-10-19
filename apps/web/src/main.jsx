@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import AdminApp from './admin/AdminApp.jsx';
 import EstadoReserva from './pantallas/EstadoReserva.jsx';
+import CartelDemo from './componentes/CartelDemo.jsx';
 import './estilos.css';
 
 // /admin -> panel, /reserva/<token> -> estado de la reserva, resto -> app del jugador
@@ -14,4 +15,13 @@ let pagina = <App />;
 if (esPanel) pagina = <AdminApp />;
 else if (tokenReserva) pagina = <EstadoReserva token={tokenReserva} />;
 
-createRoot(document.getElementById('root')).render(<StrictMode>{pagina}</StrictMode>);
+// Cartel "Versión de demostración" (VITE_DEMO=true)
+const esDemo = import.meta.env.VITE_DEMO === 'true';
+if (esDemo) document.documentElement.classList.add('con-cartel-demo');
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    {esDemo && <CartelDemo />}
+    {pagina}
+  </StrictMode>
+);

@@ -1,13 +1,12 @@
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 const { Pool } = require('pg');
+const config = require('./config');
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: 5432,
-  user: 'reservas',
-  database: 'reservas',
-  password: process.env.POSTGRES_PASSWORD,
+const pool = new Pool(config.db);
+
+// Una conexión inactiva que se corta (Neon las cierra al suspenderse)
+// no tiene que tirar abajo la API
+pool.on('error', (err) => {
+  console.error(`Conexión a la base cerrada: ${err.message}`);
 });
 
 module.exports = pool;
