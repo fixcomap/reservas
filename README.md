@@ -84,7 +84,7 @@ Copiá `.env.example` a `.env` en la raíz y completalo:
 | `MAIL_FROM` | remitente, ej: `Club Demo <reservas@club.test>` |
 | `FRONT_URL` *(opcional)* | adonde vuelve el jugador después de pagar; por defecto `http://localhost:5173` |
 
-El resto (`DATABASE_URL`, `API_URL`, `NODE_ENV`, etc.) solo hace falta en producción: ver `.env.example` y [DEPLOY.md](DEPLOY.md).
+El resto (`DATABASE_URL`, `API_URL`, `NODE_ENV`, etc.) solo hace falta en producción: ver `.env.example`.
 
 Para desarrollo con Mailpit: `SMTP_HOST=localhost` y `SMTP_PORT=1025`.
 
@@ -245,3 +245,8 @@ La API valida la firma (`x-signature`, HMAC-SHA256) y responde 401 si no coincid
 ## Producción
 
 Cloudflare Pages + Cloud Run + Neon: ver [DEPLOY.md](DEPLOY.md).
+
+## Despliegue
+
+Pipeline estándar de [fixcomap/platform](https://github.com/fixcomap/platform): PR → checks;
+`develop` → entorno de desarrollo (privado); `main` → producción con aprobación.
