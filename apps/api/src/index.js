@@ -32,6 +32,21 @@ if (config.esProduccion) {
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
 // Pedidos con cookie solo desde el front
 app.use(cors({ origin: [config.frontUrl], credentials: true }));
+// Límite por IP para todo (lecturas incluidas); las rutas sensibles tienen además el suyo.
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 900,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas peticiones seguidas. Esperá unos minutos.' },
+}));
+// CSRF: una escritura desde un navegador trae Origin; si no es el front, se rechaza.
+// Sin Origin (servidor a servidor, como un webhook) no aplica: no lleva cookies de nadie.
+app.use((req, res, next) => {
+  const origen = req.get('Origin');
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || !origen || origen === config.frontUrl) return next();
+  res.status(403).json({ error: 'Origen no permitido' });
+});
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 const PORT = config.puerto;

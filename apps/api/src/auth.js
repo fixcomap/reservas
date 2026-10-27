@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
-const config = require('./config');
 
 const COSTO_BCRYPT = 12;
 
@@ -39,7 +38,7 @@ function opcionesCookie() {
     httpOnly: true,
     sameSite: 'strict',
     path: '/',
-    secure: config.esProduccion, // HTTPS solo en producción
+    secure: true, // también en local: los navegadores la aceptan en http://localhost
     maxAge: DURACION_SESION_MS,
   };
 }

@@ -8,7 +8,9 @@
     "start": "node src/index.js",
     "migrar": "node scripts/migrar.js",
     "demo": "node scripts/demo.js",
-    "crear-admin": "node scripts/crear-admin.js"
+    "crear-admin": "node scripts/crear-admin.js",
+    "lint": "eslint .",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
@@ -27,5 +29,10 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0"
   }
 }
