@@ -51,7 +51,7 @@ async function crearSesion(res, adminId) {
     adminId,
     expiraEn,
   ]);
-  res.cookie(NOMBRE_COOKIE, token, opcionesCookie());
+  res.cookie(NOMBRE_COOKIE, token, { httpOnly: true, sameSite: 'strict', path: '/', secure: true, maxAge: DURACION_SESION_MS });
 }
 
 async function destruirSesion(req, res) {
