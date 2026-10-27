@@ -35,6 +35,7 @@ export default function AdminApp() {
     try {
       await logout();
     } catch {
+      // Sin red o la sesión ya había caducado: se sale igual.
     }
     setSesion(false);
     setPestania('agenda');
