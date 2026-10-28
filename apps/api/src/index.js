@@ -384,14 +384,19 @@ app.post('/webhooks/mercadopago', webhookMercadoPago);
 
 app.use('/admin', rutasAdmin);
 
-const servidor = app.listen(PORT, () => {
-  console.log(`API escuchando en el puerto ${PORT} (${config.esProduccion ? 'producción' : 'desarrollo'})`);
-  console.log(`URL del webhook para cargar en Mercado Pago: ${config.urlWebhookMercadoPago}`);
-});
-
-// Cloud Run manda SIGTERM antes de apagar la instancia: termina lo que está en curso y cierra la base
-process.on('SIGTERM', () => {
-  servidor.close(() => {
-    pool.end().finally(() => process.exit(0));
+// Ejecutada directamente (Cloud Run, npm run dev) escucha; requerida (tests), solo exporta la app.
+if (require.main === module) {
+  const servidor = app.listen(PORT, () => {
+    console.log(`API escuchando en el puerto ${PORT} (${config.esProduccion ? 'producción' : 'desarrollo'})`);
+    console.log(`URL del webhook para cargar en Mercado Pago: ${config.urlWebhookMercadoPago}`);
   });
-});
+
+  // Cloud Run manda SIGTERM antes de apagar la instancia: termina lo que está en curso y cierra la base
+  process.on('SIGTERM', () => {
+    servidor.close(() => {
+      pool.end().finally(() => process.exit(0));
+    });
+  });
+}
+
+module.exports = app;
