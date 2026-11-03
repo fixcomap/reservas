@@ -12,6 +12,9 @@ const {
   ErrorTurno,
   condicionTurnoFijo,
   calcularSenia,
+  esFechaReal,
+  fechaEnVentana,
+  DIAS_RESERVABLES,
 } = require('./turnos');
 const rutasAdmin = require('./rutasAdmin');
 const rateLimit = require('express-rate-limit');
@@ -61,6 +64,40 @@ const FRONT_URL = config.frontUrl;
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const MINUTOS_RETENCION = 15;
+
+// Reservas esperando el pago a la vez, por teléfono y por email
+const MAX_RETENIDAS_POR_CONTACTO = 3;
+
+// El teléfono se compara solo por sus dígitos: "+54 11 5555-0000" = "541155550000"
+const SQL_RETENIDAS_POR_CONTACTO = `
+  SELECT count(*) FILTER (WHERE regexp_replace(cliente_tel, '\\D', '', 'g') = $1)::int AS por_tel,
+         count(*) FILTER (WHERE lower(cliente_email) = $2)::int AS por_email
+  FROM reservas
+  WHERE estado = 'retenida' AND vence_en > now()
+    AND (regexp_replace(cliente_tel, '\\D', '', 'g') = $1 OR lower(cliente_email) = $2)
+`;
+
+// Cada pedido retiene un turno 15 minutos: 10 por hora por IP. En memoria, así que
+// es por instancia; el tope por contacto (en la base) es el que vale entre instancias.
+const limitadorReservas = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas reservas seguidas. Probá de nuevo más tarde.' },
+});
+
+const ERROR_FUERA_DE_VENTANA = `Solo se puede reservar desde hoy hasta ${DIAS_RESERVABLES - 1} días adelante`;
+
+// "Hoy" (AAAA-MM-DD) en la zona horaria del club
+async function hoyDelClub() {
+  const { rows: [club] } = await pool.query(
+    `SELECT to_char(now() AT TIME ZONE zona_horaria, 'YYYY-MM-DD') AS hoy FROM clubes WHERE id = $1`,
+    [CLUB_ID]
+  );
+  if (!club) throw new Error(`No existe el club ${CLUB_ID}`);
+  return club.hoy;
+}
 
 // "Seña turno Cancha 1 · Vie 16 oct 10:30"
 function tituloOrden(tipoPago, canchaNombre, inicio, zonaHoraria) {
@@ -122,11 +159,14 @@ const SQL_DISPONIBILIDAD = `
 
 app.get('/disponibilidad', async (req, res) => {
   const { fecha } = req.query;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) {
-    return res.status(400).json({ error: 'Usá fecha=AAAA-MM-DD' });
+  if (typeof fecha !== 'string' || !esFechaReal(fecha)) {
+    return res.status(400).json({ error: 'Usá fecha=AAAA-MM-DD con una fecha que exista' });
   }
 
   try {
+    if (!fechaEnVentana(fecha, await hoyDelClub())) {
+      return res.status(400).json({ error: ERROR_FUERA_DE_VENTANA });
+    }
     const [{ rows }, { rows: clubRows }] = await Promise.all([
       pool.query(SQL_DISPONIBILIDAD, [fecha, CLUB_ID]),
       pool.query('SELECT senia_porcentaje FROM clubes WHERE id = $1', [CLUB_ID]),
@@ -191,15 +231,15 @@ app.get('/club', async (req, res) => {
   }
 });
 
-app.post('/reservas', async (req, res) => {
+app.post('/reservas', limitadorReservas, async (req, res) => {
   // Los montos nunca vienen del body: los calcula el servidor
   const { cancha_id, fecha, hora, cliente_nombre, cliente_tel, cliente_email, tipo_pago } = req.body || {};
 
   if (!Number.isInteger(cancha_id)) {
     return res.status(400).json({ error: 'cancha_id inválido' });
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) {
-    return res.status(400).json({ error: 'Usá fecha=AAAA-MM-DD' });
+  if (!esFechaReal(fecha)) {
+    return res.status(400).json({ error: 'Usá fecha=AAAA-MM-DD con una fecha que exista' });
   }
   if (!/^\d{2}:\d{2}$/.test(hora || '')) {
     return res.status(400).json({ error: 'Usá hora=HH:MM' });
@@ -224,9 +264,28 @@ app.post('/reservas', async (req, res) => {
   const tokenHash = hashToken(token);
 
   try {
+    if (!fechaEnVentana(fecha, await hoyDelClub())) {
+      return res.status(400).json({ error: ERROR_FUERA_DE_VENTANA });
+    }
+
     await liberarVencidas();
 
     const resultado = await conLockDeCancha(cancha_id, async (client) => {
+      // El lock de cancha no alcanza para el tope: el mismo contacto puede estar
+      // reservando otra cancha a la vez. Lock por teléfono y por email en la misma
+      // transacción, siempre en este orden (cancha, teléfono, email): sin deadlocks.
+      // La versión de dos claves no se cruza con la de una (la de cancha).
+      const telDigitos = tel.replace(/\D/g, '');
+      await client.query('SELECT pg_advisory_xact_lock(1, hashtext($1))', [telDigitos]);
+      await client.query('SELECT pg_advisory_xact_lock(2, hashtext($1))', [email]);
+      const { rows: [retenidas] } = await client.query(SQL_RETENIDAS_POR_CONTACTO, [telDigitos, email]);
+      if (retenidas.por_tel >= MAX_RETENIDAS_POR_CONTACTO || retenidas.por_email >= MAX_RETENIDAS_POR_CONTACTO) {
+        throw new ErrorTurno(
+          `Ya tenés ${MAX_RETENIDAS_POR_CONTACTO} reservas esperando el pago. Pagalas o esperá ${MINUTOS_RETENCION} minutos a que venzan.`,
+          429
+        );
+      }
+
       const turno = await buscarTurno(fecha, cancha_id, CLUB_ID, hora, client);
       if (!turno) {
         throw new ErrorTurno('Ese turno no existe', 400);

@@ -10,9 +10,11 @@ const CLUB = 9001; // fuera de los serial: no choca con datos de demo
 const SECRETO = 'secreto-webhook-prueba';
 Object.assign(process.env, { CLUB_ID: String(CLUB), MP_ACCESS_TOKEN: 'prueba', MP_WEBHOOK_SECRET: SECRETO });
 const FRONT = 'http://localhost:5173';
-// Pasado mañana en la hora del club: el turno está en el futuro aunque el CI corra de noche.
-const FECHA = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
-  .format(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
+// Fecha en la hora del club, `dias` días desde hoy.
+const fechaEnDias = (dias) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+  .format(new Date(Date.now() + dias * 24 * 60 * 60 * 1000));
+// Pasado mañana: el turno está en el futuro aunque el CI corra de noche.
+const FECHA = fechaEnDias(2);
 const DIA = new Date(`${FECHA}T12:00:00Z`).getUTCDay();
 
 // Órdenes de Mercado Pago simuladas: id -> { cuerpo, pago, reembolsada }.
@@ -84,7 +86,7 @@ test('API contra Postgres', { skip: !conBase && 'sin DATABASE_URL' }, async (t) 
       headers: { ...(origen && { Origin: origen }), ...(body !== undefined && { 'Content-Type': 'application/json' }), ...headers },
       body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
     });
-    return { status: r.status, json: await r.json().catch(() => null) };
+    return { status: r.status, headers: r.headers, json: await r.json().catch(() => null) };
   };
   const reservar = (hora, extra = {}) => pedir('/reservas', {
     method: 'POST',
@@ -115,6 +117,13 @@ test('API contra Postgres', { skip: !conBase && 'sin DATABASE_URL' }, async (t) 
     assert.strictEqual(r.json.senia_porcentaje, 50);
     assert.deepStrictEqual(r.json.canchas[0].turnos, [{ hora: '10:00', libre: true }, { hora: '11:00', libre: true }, { hora: '12:00', libre: false }]);
     assert.strictEqual((await pedir('/disponibilidad?fecha=mañana')).status, 400);
+  });
+
+  await t.test('disponibilidad: fecha inexistente o fuera de los 7 días 400', async () => {
+    for (const fecha of ['2026-02-31', fechaEnDias(-1), fechaEnDias(7)]) {
+      assert.strictEqual((await pedir(`/disponibilidad?fecha=${fecha}`)).status, 400, fecha);
+    }
+    assert.strictEqual((await pedir(`/disponibilidad?fecha=${fechaEnDias(6)}`)).status, 200);
   });
 
   let pagada;
@@ -159,6 +168,51 @@ test('API contra Postgres', { skip: !conBase && 'sin DATABASE_URL' }, async (t) 
     assert.strictEqual((await webhook(orden)).status, 200);
     assert.deepStrictEqual(await esperarPago(r.json.token, 'reembolsado'), { estado: 'cancelada', pago_estado: 'reembolsado' });
     assert.strictEqual(ordenes.get(orden).reembolsada, true);
+  });
+
+  // POST /reservas admite 10 pedidos por hora por IP y los tests comparten IP:
+  // hasta el test del límite, entre todos no pasan de 10.
+  await t.test('fecha: tiene que existir y estar entre hoy y 6 días adelante', async () => {
+    const inexistente = await reservar('10:00', { fecha: '2026-02-31' });
+    assert.strictEqual(inexistente.status, 400);
+    assert.match(inexistente.json.error, /fecha que exista/);
+    const lejos = await reservar('10:00', { fecha: fechaEnDias(7) });
+    assert.strictEqual(lejos.status, 400);
+    assert.match(lejos.json.error, /hasta 6 días/);
+  });
+
+  await t.test('tope: 3 reservas esperando el pago por teléfono y por email', async () => {
+    // Tres retenidas del mismo contacto, fuera de la grilla para no tapar turnos
+    const retenidas = [];
+    for (const hora of ['20:00', '21:00', '22:00']) {
+      const { rows } = await pool.query(
+        `INSERT INTO reservas (cancha_id, horario, estado, origen, cliente_nombre, cliente_tel, cliente_email, vence_en, pago_estado)
+         VALUES ($1, tstzrange(($2::date + $3::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+                               ($2::date + $3::time + interval '1 hour') AT TIME ZONE 'America/Argentina/Buenos_Aires'),
+                 'retenida', 'online', 'Acaparador', '+54 11 4444-0000', 'tope@ejemplo.com',
+                 now() + interval '15 minutes', 'pendiente')
+         RETURNING id`,
+        [cancha.id, FECHA, hora]
+      );
+      retenidas.push(rows[0].id);
+    }
+    // El mismo teléfono escrito de otra forma
+    const porTel = await reservar('11:00', { cliente_tel: '541144440000', cliente_email: 'otro@ejemplo.com' });
+    assert.strictEqual(porTel.status, 429);
+    // El mismo email con mayúsculas y otro teléfono
+    const porEmail = await reservar('11:00', { cliente_tel: '+54 11 9999-0000', cliente_email: 'TOPE@ejemplo.com' });
+    assert.strictEqual(porEmail.status, 429);
+    // Si una vence, se libera el lugar
+    await pool.query(`UPDATE reservas SET vence_en = now() - interval '1 minute' WHERE id = $1`, [retenidas[0]]);
+    assert.strictEqual((await reservar('11:00', { cliente_tel: '+54 11 4444-0000', cliente_email: 'tope@ejemplo.com' })).status, 201);
+  });
+
+  await t.test('límite por IP: 10 pedidos por hora a POST /reservas', async () => {
+    let r;
+    for (let i = 0; i < 11 && r?.status !== 429; i++) r = await reservar('10:00');
+    assert.strictEqual(r.status, 429);
+    assert.strictEqual(r.headers.get('ratelimit-limit'), '10');
+    assert.match(r.json.error, /Demasiadas reservas/);
   });
 
   await t.test('CSRF: otro origen 403, cuerpo que no es JSON 415', async () => {

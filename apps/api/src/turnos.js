@@ -118,6 +118,25 @@ function diaSemanaDe(fechaIso) {
   return new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay();
 }
 
+// ¿AAAA-MM-DD es una fecha que existe? (2026-02-31 no)
+function esFechaReal(fechaIso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaIso || '')) return false;
+  const [anio, mes, dia] = fechaIso.split('-').map(Number);
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+  return fecha.getUTCFullYear() === anio && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === dia;
+}
+
+// Días que se pueden reservar contando hoy (los mismos que muestra el front)
+const DIAS_RESERVABLES = 7;
+
+// ¿fecha está entre hoy y hoy + DIAS_RESERVABLES - 1? Ambas AAAA-MM-DD reales
+// (en ese formato el orden de texto es el orden de fechas).
+function fechaEnVentana(fechaIso, hoyIso) {
+  const ultimo = new Date(`${hoyIso}T00:00:00Z`);
+  ultimo.setUTCDate(ultimo.getUTCDate() + DIAS_RESERVABLES - 1);
+  return fechaIso >= hoyIso && fechaIso <= ultimo.toISOString().slice(0, 10);
+}
+
 // Corre fn(client) en una transacción con un lock por cancha, para que
 // dos operaciones sobre la misma cancha no se pisen.
 async function conLockDeCancha(canchaId, fn) {
@@ -145,5 +164,8 @@ module.exports = {
   hayReservaActiva,
   buscarConflictosFijo,
   diaSemanaDe,
+  esFechaReal,
+  fechaEnVentana,
+  DIAS_RESERVABLES,
   conLockDeCancha,
 };

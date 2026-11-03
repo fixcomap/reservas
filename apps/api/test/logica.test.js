@@ -5,7 +5,7 @@ const { firmaValida } = require('../src/webhookMercadoPago');
 const { escaparHtml } = require('../src/mail');
 const { aCentavos } = require('../src/mercadopago');
 const { generarToken, hashToken, RE_TOKEN } = require('../src/pagos');
-const { calcularSenia, diaSemanaDe } = require('../src/turnos');
+const { calcularSenia, diaSemanaDe, esFechaReal, fechaEnVentana } = require('../src/turnos');
 const { leerRango } = require('../src/proxy');
 
 const SECRETO = 'secreto-de-prueba';
@@ -56,4 +56,24 @@ test('rangos de proxies de confianza', () => {
   assert.strictEqual(leerRango('10.0.0.0/33'), null);
   assert.strictEqual(leerRango('no-es-ip'), null);
   assert.strictEqual(leerRango('10.0.0.0/8/1'), null);
+});
+
+test('fecha de reserva: tiene que existir', () => {
+  assert.strictEqual(esFechaReal('2026-02-28'), true);
+  assert.strictEqual(esFechaReal('2028-02-29'), true); // bisiesto
+  assert.strictEqual(esFechaReal('2026-02-29'), false);
+  assert.strictEqual(esFechaReal('2026-02-31'), false);
+  assert.strictEqual(esFechaReal('2026-13-01'), false);
+  assert.strictEqual(esFechaReal('2026-00-10'), false);
+  assert.strictEqual(esFechaReal('2026-1-1'), false);
+  assert.strictEqual(esFechaReal(undefined), false);
+  assert.strictEqual(esFechaReal(20261103), false);
+});
+
+test('fecha de reserva: desde hoy hasta 6 días adelante (7 días, como el front)', () => {
+  const hoy = '2026-12-28';
+  assert.strictEqual(fechaEnVentana('2026-12-27', hoy), false); // ayer
+  assert.strictEqual(fechaEnVentana('2026-12-28', hoy), true);
+  assert.strictEqual(fechaEnVentana('2027-01-03', hoy), true); // cruza de año
+  assert.strictEqual(fechaEnVentana('2027-01-04', hoy), false);
 });
