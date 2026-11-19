@@ -112,6 +112,7 @@ test('API contra Postgres', { skip: !conBase && 'sin DATABASE_URL' }, async (t) 
 
   await t.test('salud y disponibilidad: el turno fijo no se ofrece', async () => {
     assert.strictEqual((await pedir('/salud')).status, 200);
+    assert.strictEqual((await pedir('/vivo')).status, 200);
     const r = await pedir(`/disponibilidad?fecha=${FECHA}`);
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.json.senia_porcentaje, 50);

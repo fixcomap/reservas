@@ -130,6 +130,9 @@ app.get('/salud', async (req, res) => {
   }
 });
 
+// Uptime check: sin base, para que Neon pueda suspenderse entre visitas.
+app.get('/vivo', (req, res) => res.json({ ok: true }));
+
 const SQL_DISPONIBILIDAD = `
   SELECT c.id AS cancha_id, c.nombre, c.descripcion, c.precio,
          to_char(s.inicio AT TIME ZONE cl.zona_horaria, 'HH24:MI') AS hora,
